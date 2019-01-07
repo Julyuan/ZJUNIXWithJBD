@@ -4,6 +4,7 @@
 #include <zjunix/type.h>
 #include<zjunix/fs/fscache.h>
 #include<zjunix/list.h>
+#include<driver/vga.h>
 
 // 宏定义，用来日志的描述符块里
 // 用来指示块的类型
@@ -34,7 +35,8 @@
 
 typedef struct handle_s		handle_t;	/* Atomic operation type */
 typedef struct journal_s	journal_t;	/* Journal control structure */
-
+typedef struct buf_4k		BUF_4K;
+typedef struct buf_512		BUF_512;
 
 
 typedef struct journal_header_s{
@@ -67,11 +69,6 @@ typedef struct journal_revoke_header_s
 #define JFS_FLAG_LAST_TAG	8	/* last tag in this descriptor block */
 
 
-union journal_superblock{
-	journal_superblock_t j_superblock;
-	u8 data[512];
-};
-
 
 typedef struct journal_superblock_s{
     journal_header_t s_header; 	// 用于表示本块是一个超级块
@@ -82,6 +79,12 @@ typedef struct journal_superblock_s{
     u32 s_start;				// 日志开始的块号
 
 }journal_superblock_t;
+
+
+union journal_superblock{
+	journal_superblock_t j_superblock;
+	u8 data[512];
+};
 
 struct buffer_head {
 	unsigned long b_state;		/* buffer state bitmap (see above) */
@@ -241,12 +244,6 @@ struct journal_s
 
 
 
-typedef struct journal_block_tag_s{
-    u32 t_blocknr;
-    u32 t_flags;
-
-}journal_block_tag_t;
-
 // 描述符块的封装结构
 union journal_block{
 	journal_header_t header;
@@ -293,25 +290,41 @@ void journal_new_superblock(journal_t *journal);
 void journal_update_superblock(journal_t* journal);
 
 // 加载SD卡中的日志超级块
-int load_superblock(journal_t *journal);
+u32 load_superblock(journal_t *journal);
 
 // 获取存在在日志中的下一个日志块
-int journal_next_log_block(journal_t *journal, unsigned int *retp);
+u32 journal_next_log_block(journal_t *journal, u32 *retp);
 
 // 实现一个日志块到物理块的映射
-u32 journal_bmap(journal_t *journal, unsigned int blocknr, unsigned int *retp);
+u32 journal_bmap(journal_t *journal, u32 blocknr, u32 *retp);
 
 // 实现了journal中指针字段（抽象的指针，实质是u32）的环形递增
 u32 journal_pointer_increment(u32 pointer, journal_t* jorunal);
 
 u32 journal_pointer_move(u32 pointer, journal_t* journal, u32 length);
 
+u32 journal_get_superblock(journal_t *journal);
 
-
+void journal_write_block(union journal_block* block, journal_t* journal, u32 position);
 /* revoke.c下的函数 */ 
 
-int journal_revoke(handle_t *handle, unsigned int blocknr, struct buffer_head *bh_in);
+u32 journal_revoke(handle_t *handle, u32 blocknr, struct buffer_head *bh_in);
 
+void write_one_revoke_record(journal_t *journal,
+                    union journal_block* buf,
+				    u32 *offsetp,
+				    struct jbd_revoke_record_s *record);
+
+struct jbd_revoke_table_s *journal_init_revoke_table(u32 hash_size);
+
+u32 insert_revoke_hash(journal_t *journal, u32 blocknr,
+			      tid_t seq);
+
+
+struct jbd_revoke_record_s *find_revoke_record(journal_t *journal,
+						      u32 blocknr);
+
+void journal_write_revoke_records(journal_t *journal, transaction_t *transaction);
 
 
 
@@ -329,7 +342,6 @@ u32 jread(u8 *bhp, journal_t *journal, u32 offset);
 // 这是journal_recover中会用到的函数，它的主要作用是从起始位置到终止位置遍历
 // 日志块。在journal_recover中我们要做三次recover的操作，而每一次操作的目的
 // 都是不同的
-u32 do_one_pass(journal_t *journal, struct recovery_info *info, enum passtype pass);
 
 /* commit.c下的函数 */ 
 
@@ -348,6 +360,8 @@ u32 do_one_checkpoint(journal_t*journal, transaction_t* transaction);
 // 删除transaction里checkpoint队列一个已经写回SD卡的handle
 void journal_erase_handle(transaction_t* transaction, handle_t* handle);
 
+
+void do_checkpoint(journal_t* journal);
 
 
 #endif

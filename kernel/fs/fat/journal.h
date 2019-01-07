@@ -3,5 +3,7 @@
 
 #include<zjunix/fs/jbd.h>
 #include<zjunix/fs/fat.h>
+#include <zjunix/slab.h>
+
 
 #endif

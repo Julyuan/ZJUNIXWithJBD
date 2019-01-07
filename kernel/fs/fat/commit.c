@@ -204,7 +204,8 @@ void journal_commit_transaction(journal_t *journal, transaction_t *transaction)
         }
     }
 
-    journal_write_block(tag_buf,journal,journal->j_head);
+    // still have problem
+    journal_write_block(buf,journal,journal->j_head);
     journal->j_head = journal_pointer_increment(journal->j_head, journal);
     journal->j_free--;
 
@@ -392,11 +393,11 @@ void write_data_block(handle_t* handle, journal_t* journal)
     // 大小和日志中的block相似，因此只需写一个块就可以了，而对于cluster来说，
     // 它的大小有8个block，因此我们需要连续写八个块
     if(handle->bh->b_size==BUFFER_HEAD_SECTOR){
-        write_block(handle->bh->b_page1, journal->j_head, 1);
+        write_block(handle->bh->b_page1->buf, journal->j_head, 1);
         journal->j_head++;
         journal->j_free--;
     }else if(handle->bh->b_size==BUFFER_HEAD_CLUSTER){
-        write_block(handle->bh->b_page, journal->j_head, fat_info.BPB.attr.sectors_per_cluster);
+        write_block(handle->bh->b_page->buf, journal->j_head, fat_info.BPB.attr.sectors_per_cluster);
 
         // 修改对应的j_head和j_free
         journal->j_head+=8;

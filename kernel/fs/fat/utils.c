@@ -91,7 +91,7 @@ u32 fs_modify_fat(u32 clus, u32 ClusEntryVal, handle_t* handle) {
     
     // 处理buffer_head代码
     fat_buf[index].handle->bh->b_blocknr = fat_buf[index].cur;
-    fat_buf[index].handle->bh->b_page1 = fat_buf[index].buf;
+    fat_buf[index].handle->bh->b_page1 = &(fat_buf[index]);
     fat_buf[index].handle = handle;
     fat_buf[index].h_signal_bit = 1;
 

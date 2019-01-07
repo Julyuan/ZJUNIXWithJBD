@@ -23,7 +23,7 @@ void journal_new_superblock(journal_t *journal){
 	journal_superblock_t* j_sb;
 
 	// 给该指针变量分配空间
-	j_sb = kmalloc(sizoef(sizeof(journal_superblock_t)));
+	j_sb = kmalloc(sizeof(sizeof(journal_superblock_t)));
 
 	// 设置superblock的相关value
 	j_sb->s_header.h_blocktype = JFS_SUPERBLOCK_V1;
@@ -40,7 +40,7 @@ void journal_new_superblock(journal_t *journal){
 
 }
 
-static int journal_reset(journal_t *journal){
+u32 journal_reset(journal_t *journal){
     journal_superblock_t* sb = journal->j_superblock;
     u32 first, last;
 
@@ -56,8 +56,8 @@ static int journal_reset(journal_t *journal){
  * ready.
  */
 // 实现一个日志块到物理块的映射
-u32 journal_bmap(journal_t *journal, unsigned int blocknr,
-		 unsigned int *retp)
+u32 journal_bmap(journal_t *journal, u32 blocknr,
+		 u32 *retp)
 {
 	*retp = blocknr + JOURNAL_MAX_LENGTH;
 	return 1;
@@ -67,9 +67,9 @@ u32 journal_bmap(journal_t *journal, unsigned int blocknr,
  * Log buffer allocation routines:
  */
 // 获取存在在日志中的下一个日志块
-int journal_next_log_block(journal_t *journal, unsigned int *retp)
+u32 journal_next_log_block(journal_t *journal, u32 *retp)
 {
-	unsigned int blocknr;
+	u32 blocknr;
 
 	//J_ASSERT(journal->j_free > 1);
 
@@ -86,7 +86,7 @@ int journal_next_log_block(journal_t *journal, unsigned int *retp)
  * journal_t.
  */
 // 加载SD卡中的日志超级块
-static int load_superblock(journal_t *journal)
+u32 load_superblock(journal_t *journal)
 {
 	int err;
 	journal_superblock_t *sb;
@@ -112,7 +112,7 @@ static int load_superblock(journal_t *journal)
  * validation of the format.
  */
 
-static int journal_get_superblock(journal_t *journal)
+u32 journal_get_superblock(journal_t *journal)
 {
 	// 创建superblock的union变量，方便SD卡的读取
 	union journal_superblock sb_io;

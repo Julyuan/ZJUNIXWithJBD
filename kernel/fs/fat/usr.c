@@ -26,7 +26,7 @@ u32 fs_rm(u8 *filename) {
         if (get_fat_entry_value(clus, &next_clus) == 1)
             goto fs_rm_err;
 
-        if (fs_modify_fat(clus, 0) == 1)
+        if (fs_modify_fat(clus, 0, NULL) == 1)
             goto fs_rm_err;
 
         clus = next_clus;

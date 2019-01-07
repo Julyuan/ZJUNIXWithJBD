@@ -11,6 +11,8 @@
 #define CLUSTER_SIZE 4096
 
 struct fs_info fat_info;
+typedef struct buf_4k BUF_4K;
+typedef struct buf_512 BUF_512;
 
 struct __attribute__((__packed__)) dir_entry_attr {
     u8 name[8];                   /* Name */

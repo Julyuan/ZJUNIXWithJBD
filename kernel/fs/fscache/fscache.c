@@ -39,22 +39,25 @@ u32 fs_victim_4k(BUF_4K *buf, u32 *clock_head, u32 size, handle_t* handle) {
 
     /* if all blocks are dirty, just use clock head */
     index = *clock_head;
+#ifdef JOURNAL
     if(handle != NULL){
-        handle->bh->b_page = buf[index].buf;
+        handle->bh->b_page = &(buf[index]);
         handle->bh->b_blocknr = buf[index].cur;
         buf[index].handle = handle;
     }
+#endif
 
 fs_victim_4k_ok:
 
     if ((++(*clock_head)) >= size)
         *clock_head = 0;
-
+#ifdef JOURNAL
     if(buf[index].h_signal_bit==1 && buf[index].handle->h_transaction->t_state==T_COMMIT){
         journal_commit_transaction(buf[index].handle->h_transaction->t_journal, buf[index].handle->h_transaction);
     }else if(buf[index].h_signal_bit==1 && buf[index].handle->h_transaction->t_state==T_CHECKPOINT){
         journal_erase_handle(buf[index].handle->h_transaction,buf[index].handle);
     }
+#endif
     return index;
 }
 
@@ -102,11 +105,11 @@ fs_read_4k_err:
 }
 
 /* clear a buffer block, used to avoid reading a new erased block from sd */
-u32 fs_clr_4k(BUF_4K *buf, u32 *clock_head, u32 size, u32 cur) {
+u32 fs_clr_4k(BUF_4K *buf, u32 *clock_head, u32 size, u32 cur, handle_t* handle) {
     u32 index;
     u32 i;
 
-    index = fs_victim_4k(buf, clock_head, size, NULL);
+    index = fs_victim_4k(buf, clock_head, size, handle);
 
     if (fs_write_4k(buf + index) == 1)
         goto fs_clr_4k_err;

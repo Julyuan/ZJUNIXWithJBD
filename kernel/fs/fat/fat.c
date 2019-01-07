@@ -566,14 +566,14 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
     u32 curr_cluster = get_start_cluster(file);
     if (curr_cluster == 0) {
         // 新建一个transaction并分配空间
-        transaction_t* transaction = kmalloc(sizeof(transaction_t));
+        transaction_t* transaction = (transaction_t*)kmalloc(sizeof(transaction_t));
         // 创建两个handle并分配空间
         handle_t* handle1, *handle2;
-        handle1 = kmalloc(sizeof(handle_t));
-        handle2 = kmalloc(sizeof(handle_t));
+        handle1 = (handle_t*)kmalloc(sizeof(handle_t));
+        handle2 = (handle_t*)kmalloc(sizeof(handle_t));
         // 给handle的struct buffer head分配空间
-        handle1->bh = kmalloc(sizeof(struct buffer_head));
-        handle2->bh = kmalloc(sizeof(struct buffer_head));
+        handle1->bh = (struct buffer_head*)kmalloc(sizeof(struct buffer_head));
+        handle2->bh = (struct buffer_head*)kmalloc(sizeof(struct buffer_head));
 
         // 使用指针将两个handle相连
         handle1->h_tnext = handle2;
@@ -609,12 +609,17 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
             journal->j_running_transaction->t_tprev = transaction;
         journal->j_running_transaction = transaction;
 
-
+    
         if (fs_alloc(&curr_cluster, handle1) == 1) {
             goto fs_write_err;
         }
+
         file->entry.attr.starthi = (u16)(((curr_cluster >> 16) & 0xFFFF));
         file->entry.attr.startlow = (u16)((curr_cluster & 0xFFFF));
+
+        if (fs_clr_4k(file->data_buf, &(file->clock_head), LOCAL_DATA_BUF_NUM, fs_dataclus2sec(curr_cluster), NULL) == 1)
+            goto fs_write_err;
+
         if (fs_clr_4k(file->data_buf, &(file->clock_head), LOCAL_DATA_BUF_NUM, fs_dataclus2sec(curr_cluster), handle2) == 1)
             goto fs_write_err;
         
@@ -649,7 +654,6 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
             transaction->t_tprev = NULL;
         }
     }
-
     
     /* Open first cluster to read */
     // 这里的操作是找到那个开始的cluster，存在要
@@ -661,8 +665,9 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
         /* If this is the last cluster in file, and still need to open next
          * cluster, just alloc a new data cluster */
         if (next_cluster > fat_info.total_data_clusters + 1) {
+
             // 因为这里要更改两个fat32的cluster项，所以我们在这里创建三个handle
-            transaction_t* transaction1 = kmalloc(sizeof(transaction_t));
+            transaction_t* transaction1 = (transaction_t*)kmalloc(sizeof(transaction_t));
 
             handle_t* handle3, *handle4, *handle5;  
 
@@ -715,7 +720,7 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
             transaction1->t_state = T_RUNNING;
 
 
-
+            // 
             if (fs_alloc(&next_cluster,handle3) == 1)
                 goto fs_write_err;
 
@@ -724,6 +729,8 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
 
             if (fs_clr_4k(file->data_buf, &(file->clock_head), LOCAL_DATA_BUF_NUM, fs_dataclus2sec(next_cluster), handle5) == 1)
                 goto fs_write_err;
+
+
 
             // transaction执行完毕，将该transaction从running队列转移到commit队列
             transaction1->t_state = T_COMMIT;
@@ -764,11 +771,12 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
     u32 index = 0;
     u32 flag = 0;
     // flag表示块的来源是已有的还是新出现的
+
     transaction_t* transaction2;
     handle_t* handle6;
     transaction_t *transaction3;
     handle_t *handle7, *handle8, *handle9;
-    
+
     // 在这一层的while里，读入只会影响到一个cluster，所以我们在这里处理一个transaction
     // 如果是不需要新增块的。我们就处理transaction2，里面只有一个文件数据的handle
     // 如果是需要新增块的。我们就处理transaction3，里面有三个ahndle，其中有两个和fat表相关
@@ -784,9 +792,9 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
         if(flag==0){
             // 这里是更改原来的buffer，所以只需要一个handle就可以了
             // 给transaction及其相关的指针变量分配空间
-            transaction2 = kmalloc(sizeof(transaction_t));
-            handle6 = kmalloc(sizeof(handle_t));
-            handle6->bh = kmalloc(sizeof(struct buffer_head));
+            transaction2 = (transaction_t*)kmalloc(sizeof(transaction_t));
+            handle6 = (handle_t*)kmalloc(sizeof(handle_t));
+            handle6->bh = (struct buffer_head*)kmalloc(sizeof(struct buffer_head));
 
             // 设置transaction的t_tid
             transaction2->t_tid = journal->j_transaction_sequence;
@@ -811,7 +819,7 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
             handle6->h_cpprev = NULL;
 
             file->data_buf[index].handle = handle6;
-            handle6->bh->b_page = file->data_buf[index].buf;
+            handle6->bh->b_page = &(file->data_buf[index]);
             handle6->bh->b_blocknr = file->data_buf[index].cur;
         }
         /* If in same cluster, just write */
@@ -852,9 +860,38 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
                     journal->j_committing_transaction->t_tprev = transaction2;
                     transaction2->t_tnext = journal->j_committing_transaction;
                     transaction2->t_tprev = NULL;
-                } 
+                }
             }else{
                 // 提交transaction3
+                transaction3->t_state = T_COMMIT;
+                if(journal->j_running_transaction==transaction3){
+                    if(transaction3->t_tnext==NULL){
+                        journal->j_running_transaction = NULL;
+                    }
+                    else{
+                        journal->j_running_transaction = journal->j_running_transaction->t_tnext;
+                        journal->j_running_transaction->t_tprev = NULL;
+                    }
+                }
+                else{
+                    if(transaction3->t_tnext==NULL){
+                        transaction3->t_tprev->t_tnext = NULL;
+                    }
+                    else{
+                        transaction3->t_tprev->t_tnext = transaction3->t_tnext;
+                        transaction3->t_tnext->t_tprev = transaction3->t_tprev;
+                    }
+                }
+                if(journal->j_committing_transaction==NULL){
+                    journal->j_committing_transaction=transaction3;
+                    transaction3->t_tnext = NULL;
+                    transaction3->t_tprev = NULL;
+                }
+                else if(journal->j_committing_transaction!=NULL){
+                    journal->j_committing_transaction->t_tprev = transaction3;
+                    transaction3->t_tnext = journal->j_committing_transaction;
+                    transaction3->t_tprev = NULL;
+                } 
             }
         }
         /* otherwise, write clusters one by one */
@@ -864,6 +901,7 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
                 file->data_buf[index].buf[i] = buf[cc++];
 
             if(flag==0){
+                
                 // transaction2执行完毕，将该transaction从running队列转移到commit队列
                 transaction2->t_state = T_COMMIT;
                 if(journal->j_running_transaction==transaction2){
@@ -1059,7 +1097,7 @@ u32 fs_find_empty_entry(u32 *empty_entry, u32 index) {
 
                     *empty_entry = 0;
 
-                    if (fs_clr_512(dir_data_buf, &dir_data_clock_head, DIR_DATA_BUF_NUM, fs_dataclus2sec(next_clus),NULL) == 1)
+                    if (fs_clr_512(dir_data_buf, &dir_data_clock_head, DIR_DATA_BUF_NUM, fs_dataclus2sec(next_clus)) == 1)
                         goto fs_find_empty_entry_err;
                 }
 

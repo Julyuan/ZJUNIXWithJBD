@@ -1,16 +1,18 @@
 #include"recovery.h"
 
+
+
 // 将一个handle所关联的磁盘块插入到journal的revoke hash table里去
-int journal_revoke(handle_t *handle, unsigned int blocknr, struct buffer_head *bh_in){
+u32 journal_revoke(handle_t *handle, u32 blocknr, struct buffer_head *bh_in){
     
 }
 
 
 
-static struct jbd_revoke_table_s *journal_init_revoke_table(int hash_size)
+struct jbd_revoke_table_s *journal_init_revoke_table(u32 hash_size)
 {
-	int shift = 0;
-	int tmp = hash_size;
+	u32 shift = 0;
+	u32 tmp = hash_size;
 	struct jbd_revoke_table_s *table;
 
 	//table = kmem_cache_alloc(revoke_table_cache, GFP_KERNEL);
@@ -42,17 +44,17 @@ out:
 /* Utility functions to maintain the revoke table */
 
 /* Borrowed from buffer.c: this is a tried and tested block hash function */
-static inline int hash(journal_t *journal, unsigned int block)
+u32 hash(journal_t *journal, u32 block)
 {
 	struct jbd_revoke_table_s *table = journal->j_revoke_table;
-	int hash_shift = table->hash_shift;
+	u32 hash_shift = table->hash_shift;
 
 	return ((block << (hash_shift - 6)) ^
 		(block >> 13) ^
 		(block << (hash_shift - 12))) & (table->hash_size - 1);
 }
 
-static int insert_revoke_hash(journal_t *journal, unsigned int blocknr,
+u32 insert_revoke_hash(journal_t *journal, u32 blocknr,
 			      tid_t seq)
 {
 	struct list_head *hash_list;
@@ -71,8 +73,8 @@ repeat:
 
 /* Find a revoke record in the journal's hash table. */
 
-static struct jbd_revoke_record_s *find_revoke_record(journal_t *journal,
-						      unsigned int blocknr)
+struct jbd_revoke_record_s *find_revoke_record(journal_t *journal,
+						      u32 blocknr)
 {
 	struct list_head *hash_list;
 	struct jbd_revoke_record_s *record;
@@ -145,13 +147,13 @@ void journal_write_revoke_records(journal_t *journal, transaction_t *transaction
  * block if the old one is full or if we have not already created one.
  */
 // 这个函数的作用是写一条记录
-static void write_one_revoke_record(journal_t *journal,
+void write_one_revoke_record(journal_t *journal,
                     union journal_block* buf,
 				    u32 *offsetp,
 				    struct jbd_revoke_record_s *record)
 {
 	struct journal_head *descriptor;
-	int offset;
+	u32 offset;
 	journal_header_t *header;
 
 	offset = *offsetp;

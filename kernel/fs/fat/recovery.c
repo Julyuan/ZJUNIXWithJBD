@@ -4,12 +4,34 @@
 
 enum passtype {PASS_SCAN, PASS_REVOKE, PASS_REPLAY};
 
-// 根据offset读进一个块，并且将内容赋值到buffer head上去
-u32 jread(u8 *bhp, journal_t *journal, unsigned int offset){
-	if(bhp==NULL){
+u32 journal_set_revoke(journal_t *journal,
+						u32 blocknr,
+						tid_t sequence);
 
+// 恢复信息，记录了日志恢复阶段的相关变量的值
+struct recovery_info{
+    u16 start_transaction;
+    u16 end_transaction;
+
+    u32 nr_replays;
+    u32 nr_revokes;
+    u32 nr_revoke_hits;
+
+};
+
+static u32 do_one_pass(journal_t *journal, struct recovery_info *info, enum passtype pass);
+
+
+static u32 scan_revoke_records(journal_t *journal, union journal_block *bh,
+			       tid_t sequence, struct recovery_info *info);
+
+// 根据offset读进一个块，并且将内容赋值到buffer head上去
+u32 jread(u8 *bhp, journal_t *journal, u32 offset){
+	if(bhp==NULL){
+		return 0;
 	}
 	read_block(bhp,JOURNAL_SUPERBLOCK_POSITION+offset,1);
+	return 1;
 }
 
 // 这个是对一个bh块的释放操作
@@ -27,7 +49,7 @@ static inline void brelse(union journal_block* bh)
 // 的数目
 static u32 count_tags(union journal_block *bh, int size)
 {
-	char *			tagp;
+	u8*			tagp;
 	journal_block_tag_t *	tag;
 	u32			nr = 0;
 
@@ -81,16 +103,7 @@ u32 journal_recover(journal_t *journal){
 
 }
 
-// 恢复信息，记录了日志恢复阶段的相关变量的值
-struct recovery_info{
-    u16 start_transaction;
-    u16 end_transaction;
 
-    u32 nr_replays;
-    u32 nr_revokes;
-    u32 nr_revoke_hits;
-
-};
 
 /* Make sure we wrap around the log correctly! */
 #define wrap(journal, var)						\
@@ -101,7 +114,7 @@ do {									\
 
 
 // 扫描整一块日志区
-u32 do_one_pass(journal_t *journal, struct recovery_info *info, enum passtype pass){
+static u32 do_one_pass(journal_t *journal, struct recovery_info *info, enum passtype pass){
     u32     first_commit_ID, next_commit_ID;
     u32		next_log_block;
     u32 	err, success = 0;
@@ -143,7 +156,7 @@ u32 do_one_pass(journal_t *journal, struct recovery_info *info, enum passtype pa
 		bh = (union journal_block*)kmalloc(sizeof(union journal_block));
 
 		// 从日志的磁盘去读进一个块
-        err = jread(bh, journal, next_log_block);
+        err = jread(bh->data, journal, next_log_block);
 		
 		// 下一个日志块递增，注意环形结构，这个递增操作是通用的，
 		// 即每一个外层的while循环都会进行递增的操作
@@ -195,7 +208,7 @@ u32 do_one_pass(journal_t *journal, struct recovery_info *info, enum passtype pa
 			 * getting done here! */
 			// tagp 在这里是一个char数组的指针，我们要准备开始做
 			// 写回的操作了，此时的passtype应该是PASS_REPLAY
-			tagp = bh->data[sizeof(journal_header_t)];
+			tagp = &(bh->data[sizeof(journal_header_t)]);
 
 			// 最外层的while是判断日志磁盘区是否越界
 			while ((tagp - bh->data +sizeof(journal_block_tag_t)) <= journal->j_blocksize) 
@@ -215,7 +228,7 @@ u32 do_one_pass(journal_t *journal, struct recovery_info *info, enum passtype pa
 
 				// 获取记录在日志中的数据块，obh在这里相当于是接口
 				union journal_block* obh = (union journal_block*)kmalloc(sizeof(union journal_block));
-				err = jread(obh, journal, io_block);
+				err = jread(obh->data, journal, io_block);
 				if (err) {
 					/* Recover what we can, but
 					 * report failure at the end. */
@@ -314,9 +327,9 @@ u32 do_one_pass(journal_t *journal, struct recovery_info *info, enum passtype pa
 				goto failed;
 			continue;
 
-		default:
-			jbd_debug(3, "Unrecognised magic %d, end of scan.\n",
-				  blocktype);
+		 default:
+		// 	jbd_debug(3, "Unrecognised magic %d, end of scan.\n",
+		// 		  blocktype);
 			brelse(bh);
 			goto done;
 		}
@@ -352,19 +365,19 @@ u32 do_one_pass(journal_t *journal, struct recovery_info *info, enum passtype pa
 
 /* Scan a revoke record, marking all blocks mentioned as revoked. */
 
-static int scan_revoke_records(journal_t *journal, union journal_block *bh,
+static u32 scan_revoke_records(journal_t *journal, union journal_block *bh,
 			       tid_t sequence, struct recovery_info *info)
 {
 	journal_revoke_header_t *header;
-	int offset, max;
+	u32 offset, max;
 
 	header = (journal_revoke_header_t *) bh->data;
 	offset = sizeof(journal_revoke_header_t);
 	max = (header->r_count);
 
 	while (offset < max) {
-		unsigned int blocknr;
-		int err;
+		u32 blocknr;
+		u32 err;
 
 		// 这句话好像有点问题，貌似是u8转成u32
 		blocknr = *((u32 *)(bh->data+offset));
@@ -378,7 +391,7 @@ static int scan_revoke_records(journal_t *journal, union journal_block *bh,
 	return 0;
 }
 
-int journal_set_revoke(journal_t *journal,
+u32 journal_set_revoke(journal_t *journal,
 						u32 blocknr,
 						tid_t sequence)
 {
@@ -392,7 +405,7 @@ int journal_set_revoke(journal_t *journal,
 		return 0;
 	}
 
-	return insert_revoke_table(journal, blocknr, sequence);
+	return insert_revoke_hash(journal, blocknr, sequence);
 }
 
 /*
