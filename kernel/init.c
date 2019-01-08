@@ -79,5 +79,5 @@ void init_kernel() {
     *GPIO_SEG = 0x11223344;
     // Enter shell
     while (1)
-        ps();
+        ;
 }
