@@ -10,11 +10,18 @@ u32 init_journal_info(){
 	// 给该日志分配新的空间
 	journal = (journal_t*)kmalloc(sizeof(journal_t));
 
+	u32 err = 0;
 	// 从SD卡里加载superblock并读入内存
-	load_superblock(journal);
+	err = load_superblock(journal);
 
-	// 启动日志的恢复程序
-	journal_recover(journal);
+	if(err==0){
+		// 启动日志的恢复程序
+		//journal_recover(journal);
+		printk("journal superblock load success!\n");
+		while(1){}
+	}else{
+		journal_update_superblock(journal);
+	}
 	return 0;
 }
 
@@ -37,7 +44,11 @@ void journal_new_superblock(journal_t *journal){
 	j_sb->s_maxlen = JOURNAL_MAX_LENGTH;
 	j_sb->s_start = JOURNAL_DEFAULT_START;
 	j_sb->s_sequence = JOURNAL_DEFAULT_SEQUENCE;
-
+	
+	printk("block size: %d\n",j_sb->s_blocksize);
+	printk("maxlen:	%d\n",j_sb->s_maxlen);
+	printk("start:	%d\n",j_sb->s_start);
+	printk("sequence:	%d\n",j_sb->s_sequence);
 	// 将journal的j_superblock字段设置成该指针变量
 	journal->j_superblock = j_sb;
 
@@ -240,7 +251,24 @@ u32 journal_pointer_move(u32 pointer, journal_t* journal, u32 length){
 	return pointer;
 }
 
-
+// 这个函数是在日志操作结束的时候调用
+// 在这里我们需要把还没有提交的transaction给提交了，
+// 并且我们需要释放无用的内存空间
 void journal_finish(journal_t* journal){
+	if(journal==NULL){
+		printk("JOURNAL FINISH ERROR, journal is NULL!\n");
+		return;
+	}
+	transaction_t* transaction;
+	transaction = journal->j_committing_transaction;
+	while(transaction!=NULL){
+		journal_commit_transactions(journal, transaction);
+		transaction = transaction->t_tnext;
+	}
 
+	journal_update_superblock(journal);
+	kfree(journal->j_superblock);
+	kfree(journal);
+
+	return;
 }

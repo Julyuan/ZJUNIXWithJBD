@@ -193,7 +193,7 @@ u32 read_fat_sector(u32 ThisFATSecNum, handle_t* handle) {
 
                 case STATE_TWO:     //这里要做write的操作，我们直接提交，又因为该handle要写回
                                     //我们还要调用erase_handle
-                    journal_commit_transaction(fat_buf[index].handle->h_transaction->t_journal, fat_buf[index].handle->h_transaction);
+                    journal_commit_transactions(fat_buf[index].handle->h_transaction->t_journal, fat_buf[index].handle->h_transaction);
                     journal_erase_handle(fat_buf[index].handle->h_transaction,fat_buf[index].handle);
                     fat_buf[index].handle = handle;
                     fat_buf[index].h_signal_bit = STATE_ONE;
@@ -271,7 +271,7 @@ u32 read_fat_sector(u32 ThisFATSecNum, handle_t* handle) {
                     // 代表transaction的running状态结束
                     // 没有被提交的情况
                     case STATE_TWO: 
-                        journal_commit_transaction(fat_buf[index].handle->h_transaction->t_journal, fat_buf[index].handle->h_transaction);
+                        journal_commit_transactions(fat_buf[index].handle->h_transaction->t_journal, fat_buf[index].handle->h_transaction);
                         fat_buf[index].handle = handle;
                         fat_buf[index].h_signal_bit = STATE_ONE;
                         fat_buf[index].handle->bh->b_blocknr = fat_buf[index].cur;

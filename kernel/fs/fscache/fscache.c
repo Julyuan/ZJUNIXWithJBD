@@ -81,7 +81,7 @@ fs_victim_4k_ok:
                 // 代表handle所在的transaction被提交了
                 // 但是handle没有被checkpoint的情况
                 case STATE_TWO: 
-                    journal_commit_transaction(buf[index].handle->h_transaction->t_journal, buf[index].handle->h_transaction);
+                    journal_commit_transactions(buf[index].handle->h_transaction->t_journal, buf[index].handle->h_transaction);
                     journal_erase_handle(buf[index].handle->h_transaction,buf[index].handle);
                     buf[index].h_signal_bit = STATE_ZERO;
                     buf[index].handle = NULL;           
@@ -119,7 +119,7 @@ fs_victim_4k_ok:
                 // 代表handle所在的transaction被提交了
                 // 但是handle没有被checkpoint的情况
                 case STATE_TWO: 
-                    journal_commit_transaction(buf[index].handle->h_transaction->t_journal, buf[index].handle->h_transaction);
+                    journal_commit_transactions(buf[index].handle->h_transaction->t_journal, buf[index].handle->h_transaction);
                     journal_erase_handle(buf[index].handle->h_transaction,buf[index].handle);
                     buf[index].h_signal_bit = 1;
                     buf[index].handle = handle;
@@ -162,7 +162,7 @@ fs_victim_4k_ok:
                 // 代表handle所在的transaction被提交了
                 // 但是handle没有被checkpoint的情况
                 case STATE_TWO: 
-                    journal_commit_transaction(buf[index].handle->h_transaction->t_journal, buf[index].handle->h_transaction);
+                    journal_commit_transactions(buf[index].handle->h_transaction->t_journal, buf[index].handle->h_transaction);
                     buf[index].h_signal_bit = STATE_ZERO;
                     buf[index].handle = NULL;           
                     break;
@@ -200,7 +200,7 @@ fs_victim_4k_ok:
                 // 代表handle所在的transaction被提交了
                 // 但是handle没有被checkpoint的情况
                 case STATE_TWO: 
-                    journal_commit_transaction(buf[index].handle->h_transaction->t_journal, buf[index].handle->h_transaction);
+                    journal_commit_transactions(buf[index].handle->h_transaction->t_journal, buf[index].handle->h_transaction);
                     buf[index].h_signal_bit = 1;
                     buf[index].handle = handle;
                     handle->bh->b_page = &(buf[index]);

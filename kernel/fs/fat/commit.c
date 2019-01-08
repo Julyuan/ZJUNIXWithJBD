@@ -83,6 +83,7 @@ void journal_commit_transactions(journal_t *journal, transaction_t *transaction)
 
 void journal_commit_transaction(journal_t *journal, transaction_t *transaction)
 {
+    journal->j_commit_transaction_count--;
     // 错误检查，确保这两个指针不是空指针
     // 如果出错的话就打印相关的错误信息
     if(journal==NULL){
