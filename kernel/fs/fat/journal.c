@@ -24,7 +24,7 @@ u32 init_journal_info(){
 		// 启动日志的恢复程序
 		journal_recover(journal);
 		printk("journal superblock load success!\n");
-		while(1){}
+	//	while(1){}
 	}else{
 		printk("journal superblock load failed!\n");
 		//while(1){}
