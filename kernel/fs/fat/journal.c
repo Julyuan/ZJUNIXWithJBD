@@ -189,6 +189,7 @@ u32 journal_get_superblock(journal_t *journal)
 	// 	printk ("JBD: journal file too short\n");
 	// 	goto out;
 	// }
+	journal->j_superblock = sb;
 	printk("load success1\n");
 	return 0;
 

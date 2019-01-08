@@ -353,11 +353,11 @@ Linker script and memory map
                 0x00000000800063ac                journal_next_log_block
                 0x000000008000644c                load_superblock
                 0x0000000080006504                journal_get_superblock
-                0x00000000800066e4                journal_update_superblock
-                0x0000000080006884                journal_write_block
-                0x00000000800068e0                journal_pointer_increment
-                0x000000008000695c                journal_pointer_move
-                0x0000000080006a08                journal_finish
+                0x00000000800066f0                journal_update_superblock
+                0x0000000080006890                journal_write_block
+                0x00000000800068ec                journal_pointer_increment
+                0x0000000080006968                journal_pointer_move
+                0x0000000080006a14                journal_finish
  .text          0x0000000080006ad0      0x6a0 kernel/fs/fat/utils.o
                 0x0000000080006ad0                read_block
                 0x0000000080006b18                write_block
