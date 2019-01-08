@@ -95,7 +95,7 @@ u32 journal_recover(journal_t *journal){
 	printk("JOURNAL RECOVERY s_maxlen:	%d\n",sb->s_maxlen);
 	printk("JOURNAL RECOVERY s_first:	%d\n",sb->s_first);
 
-	while(1){}
+	//while(1){}
 	if (!sb->s_start) {
 		printk("no need to recovery!\n");
 		while(1){}
