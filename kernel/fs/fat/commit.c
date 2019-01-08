@@ -132,11 +132,12 @@ void journal_commit_transaction(journal_t *journal, transaction_t *transaction)
     // 将剩余的journal_block_tag_t写入描述符块
     u32 count = transaction->t_block_num;
 
+    handle_t* handle_p = transaction->t_buffers;
+
     while(1){
-        handle_t* handle_p = transaction->t_buffers;
-        
         // 如果只有一个sector，我们只要写一个block_tag
         if(handle_p->bh->b_size==BUFFER_HEAD_SECTOR){
+            handle_p->bh->b_page1->h_signal_bit = STATE_THREE;
 
             // 个人感觉这里还是用union稳一点
             tag_buf->tag.t_blocknr = handle_p->bh->b_blocknr;
@@ -163,6 +164,7 @@ void journal_commit_transaction(journal_t *journal, transaction_t *transaction)
 
         }   // 如果存在一个cluster，我们就需要连续的写多个block_tag
         else{ 
+            handle_p->bh->b_page->h_signal_bit = STATE_THREE;
             for(u32 i=0;i<fat_info.BPB.attr.sectors_per_cluster;i++){
 
                 // 对于cluster的BUF，它的cur的值实质上就是其中第一个sector的位置
@@ -481,6 +483,7 @@ u32 do_one_checkpoint(journal_t*journal, transaction_t* transaction){
     while(handle_head!=NULL){
 
         if(handle_head->bh->b_size==BUFFER_HEAD_SECTOR){
+            handle_head->bh->b_page1->h_signal_bit = STATE_FOUR;
             if(handle_head->bh->b_page1->handle != handle_ano){
                 // 因为我们没有引入引用计数这一个概念，所以这里必须要考虑一个BUF
                 // 归属到其他handle的情况，我们暂不考虑这种情况，直接暴力写回
@@ -491,6 +494,7 @@ u32 do_one_checkpoint(journal_t*journal, transaction_t* transaction){
             write_count+=1;
         }
         else if(handle_head->bh->b_size==BUFFER_HEAD_CLUSTER){
+            handle_head->bh->b_page->h_signal_bit = STATE_FOUR;
             if(handle_head->bh->b_page1->handle != handle_ano){
                 // 因为我们没有引入引用计数这一个概念，所以这里必须要考虑一个BUF
                 // 归属到其他handle的情况，我们暂不考虑这种情况，直接暴力写回
@@ -502,6 +506,7 @@ u32 do_one_checkpoint(journal_t*journal, transaction_t* transaction){
             write_count+=fat_info.BPB.attr.sectors_per_cluster;
         }
 
+        handle_head = handle_head->h_cpnext;
     }
 
     
@@ -529,6 +534,12 @@ u32 do_one_checkpoint(journal_t*journal, transaction_t* transaction){
 
 // 将某个handle从transaction上删除
 void journal_erase_handle(transaction_t* transaction, handle_t* handle){
+    if(handle->bh->b_size = BUFFER_HEAD_CLUSTER){
+        handle->bh->b_page->h_signal_bit = STATE_FOUR;
+    }
+    else if(handle->bh->b_size = BUFFER_HEAD_SECTOR){
+        handle->bh->b_page1->h_signal_bit = STATE_FOUR;
+    }
     if(handle->h_transaction!=transaction){
         printk("erase handle error! transaction not equal\n");
         return;

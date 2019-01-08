@@ -67,6 +67,38 @@ fs_victim_4k_ok:
     if(flag==1){
         if(handle==NULL){
             // do nothing
+            switch(buf[index].h_signal_bit){
+                // 代表的是最初的情况
+                case STATE_ZERO:break;
+                // 代表transaction还在running
+                // 没有被提交的情况,没有出错的话一般不会发生
+                case STATE_ONE: 
+                    printk("STATE ONE ERROR!\n");
+                    while(1){
+
+                    }
+                    break;
+                // 代表handle所在的transaction被提交了
+                // 但是handle没有被checkpoint的情况
+                case STATE_TWO: 
+                    journal_commit_transaction(buf[index].handle->h_transaction->t_journal, buf[index].handle->h_transaction);
+                    journal_erase_handle(buf[index].handle->h_transaction,buf[index].handle);
+                    buf[index].h_signal_bit = STATE_ZERO;
+                    buf[index].handle = NULL;           
+                    break;
+                // 代表handle所在的transaction被提交了
+                // handle有被checkpoint的情况
+                case STATE_THREE: 
+                    journal_erase_handle(buf[index].handle->h_transaction,buf[index].handle);
+                    buf[index].h_signal_bit = STATE_ZERO;
+                    buf[index].handle = NULL;
+                break;
+                case STATE_FOUR:   
+                    buf[index].h_signal_bit = STATE_ZERO;
+                    buf[index].handle = NULL;
+                break;
+                default:
+            }
         }else{
             switch(buf[index].h_signal_bit){
                 // 代表的是最初的情况
@@ -116,6 +148,36 @@ fs_victim_4k_ok:
     else{
         if(handle==NULL){
             // do nothing
+            switch(buf[index].h_signal_bit){
+                // 代表的是最初的情况
+                case STATE_ZERO:break;
+                // 代表transaction还在running
+                // 没有被提交的情况,没有出错的话一般不会发生
+                case STATE_ONE: 
+                    printk("STATE ONE ERROR!\n");
+                    while(1){
+
+                    }
+                    break;
+                // 代表handle所在的transaction被提交了
+                // 但是handle没有被checkpoint的情况
+                case STATE_TWO: 
+                    journal_commit_transaction(buf[index].handle->h_transaction->t_journal, buf[index].handle->h_transaction);
+                    buf[index].h_signal_bit = STATE_ZERO;
+                    buf[index].handle = NULL;           
+                    break;
+                // 代表handle所在的transaction被提交了
+                // handle有被checkpoint的情况
+                case STATE_THREE: 
+                    buf[index].h_signal_bit = STATE_ZERO;
+                    buf[index].handle = NULL;
+                break;
+                case STATE_FOUR:   
+                    buf[index].h_signal_bit = STATE_ZERO;
+                    buf[index].handle = NULL;
+                break;
+                default:
+            }
         }else{
             switch(buf[index].h_signal_bit){
                 // 代表的是最初的情况
@@ -124,6 +186,7 @@ fs_victim_4k_ok:
                     buf[index].handle = handle;
                     handle->bh->b_page = &(buf[index]);
                     handle->bh->b_blocknr = buf[index].cur;
+                    handle->bh->b_size = BUFFER_HEAD_CLUSTER;
                 break;
                 // 代表transaction还在running
                 // 没有被提交的情况
@@ -132,6 +195,7 @@ fs_victim_4k_ok:
                     buf[index].handle = handle;
                     handle->bh->b_page = &(buf[index]);
                     handle->bh->b_blocknr = buf[index].cur;
+                    handle->bh->b_size = BUFFER_HEAD_CLUSTER;
                 break;
                 // 代表handle所在的transaction被提交了
                 // 但是handle没有被checkpoint的情况
@@ -141,6 +205,7 @@ fs_victim_4k_ok:
                     buf[index].handle = handle;
                     handle->bh->b_page = &(buf[index]);
                     handle->bh->b_blocknr = buf[index].cur;
+                    handle->bh->b_size = BUFFER_HEAD_CLUSTER;
                 break;
                 // 代表handle所在的transaction被提交了
                 // handle有被checkpoint的情况
@@ -149,6 +214,7 @@ fs_victim_4k_ok:
                     buf[index].handle = handle;
                     handle->bh->b_page = &(buf[index]);
                     handle->bh->b_blocknr = buf[index].cur;
+                    handle->bh->b_size = BUFFER_HEAD_CLUSTER;
                 break;
                 //
                 case STATE_FOUR:  
@@ -156,6 +222,7 @@ fs_victim_4k_ok:
                     buf[index].handle = handle;
                     handle->bh->b_page = &(buf[index]);
                     handle->bh->b_blocknr = buf[index].cur;
+                    handle->bh->b_size = BUFFER_HEAD_CLUSTER;
                 break;
                 default:
             }

@@ -175,6 +175,7 @@ u32 read_fat_sector(u32 ThisFATSecNum, handle_t* handle) {
                     fat_buf[index].h_signal_bit = STATE_ONE;
                     fat_buf[index].handle->bh->b_blocknr = fat_buf[index].cur;
                     fat_buf[index].handle->bh->b_page1 = &(fat_buf[index]);
+                    fat_buf[index].handle->bh->b_size = BUFFER_HEAD_SECTOR;
                 break;
                 // 代表transaction还在running
                 // 没有被提交的情况
@@ -198,6 +199,8 @@ u32 read_fat_sector(u32 ThisFATSecNum, handle_t* handle) {
                     fat_buf[index].h_signal_bit = STATE_ONE;
                     fat_buf[index].handle->bh->b_blocknr = fat_buf[index].cur;
                     fat_buf[index].handle->bh->b_page1 = &(fat_buf[index]);
+                                        fat_buf[index].handle->bh->b_size = BUFFER_HEAD_SECTOR;
+
                 break;
                 // 代表handle所在的transaction被提交了
                 // 但是handle没有被checkpoint的情况
@@ -207,6 +210,8 @@ u32 read_fat_sector(u32 ThisFATSecNum, handle_t* handle) {
                     fat_buf[index].h_signal_bit = STATE_ONE;
                     fat_buf[index].handle->bh->b_blocknr = fat_buf[index].cur;
                     fat_buf[index].handle->bh->b_page1 = &(fat_buf[index]);
+                    fat_buf[index].handle->bh->b_size = BUFFER_HEAD_SECTOR;
+
                 break;
                 // 代表handle所在的transaction被提交了
                 // handle有被checkpoint的情况
@@ -215,6 +220,7 @@ u32 read_fat_sector(u32 ThisFATSecNum, handle_t* handle) {
                     fat_buf[index].h_signal_bit = STATE_ONE;
                     fat_buf[index].handle->bh->b_blocknr = fat_buf[index].cur;
                     fat_buf[index].handle->bh->b_page1 = &(fat_buf[index]);
+                    fat_buf[index].handle->bh->b_size = BUFFER_HEAD_SECTOR;
                 break;
                 default:
             }
@@ -270,6 +276,8 @@ u32 read_fat_sector(u32 ThisFATSecNum, handle_t* handle) {
                         fat_buf[index].h_signal_bit = STATE_ONE;
                         fat_buf[index].handle->bh->b_blocknr = fat_buf[index].cur;
                         fat_buf[index].handle->bh->b_page1 = &(fat_buf[index]);
+                        fat_buf[index].handle->bh->b_size = BUFFER_HEAD_SECTOR;
+
                     break;
                     // 代表handle所在的transaction被提交了
                     // 但是handle没有被checkpoint的情况
@@ -278,6 +286,8 @@ u32 read_fat_sector(u32 ThisFATSecNum, handle_t* handle) {
                         fat_buf[index].h_signal_bit = STATE_ONE;
                         fat_buf[index].handle->bh->b_blocknr = fat_buf[index].cur;
                         fat_buf[index].handle->bh->b_page1 = &(fat_buf[index]);
+                        fat_buf[index].handle->bh->b_size = BUFFER_HEAD_SECTOR;
+
                     break;
                     // 代表handle所在的transaction被提交了
                     // handle有被checkpoint的情况
@@ -286,6 +296,7 @@ u32 read_fat_sector(u32 ThisFATSecNum, handle_t* handle) {
                         fat_buf[index].h_signal_bit = STATE_ONE;
                         fat_buf[index].handle->bh->b_blocknr = fat_buf[index].cur;
                         fat_buf[index].handle->bh->b_page1 = &(fat_buf[index]);
+                        fat_buf[index].handle->bh->b_size = BUFFER_HEAD_SECTOR;
                     break;
                     default:
                 }
@@ -752,6 +763,11 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
         
         // transaction执行完毕，将该transaction从running队列转移到commit队列
         transaction->t_state = T_COMMIT;
+
+        // 修改handle对应的BUF的状态
+        handle1->bh->b_page1->h_signal_bit = STATE_TWO;
+        handle2->bh->b_page->h_signal_bit = STATE_TWO;
+
         if(journal->j_running_transaction==transaction){
             if(transaction->t_tnext==NULL){
                 journal->j_running_transaction = NULL;
@@ -861,6 +877,10 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
 
             // transaction执行完毕，将该transaction从running队列转移到commit队列
             transaction1->t_state = T_COMMIT;
+            
+            handle3->bh->b_page1->h_signal_bit = STATE_TWO;
+            handle4->bh->b_page1->h_signal_bit = STATE_TWO;
+            handle5->bh->b_page->h_signal_bit = STATE_TWO;
             if(journal->j_running_transaction==transaction1){
                 if(transaction1->t_tnext==NULL){
                     journal->j_running_transaction = NULL;
@@ -946,6 +966,7 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
             handle6->h_cpprev = NULL;
 
             file->data_buf[index].handle = handle6;
+            file->data_buf[index].h_signal_bit = STATE_ONE;
             handle6->bh->b_page = &(file->data_buf[index]);
             handle6->bh->b_blocknr = file->data_buf[index].cur;
         }
@@ -960,6 +981,7 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
                 // transaction2执行完毕，将该transaction从running队列转移到commit队列
                 // transaction2提交
                 transaction2->t_state = T_COMMIT;
+                handle6->bh->b_page->h_signal_bit = STATE_TWO;
                 if(journal->j_running_transaction==transaction2){
                     if(transaction2->t_tnext==NULL){
                         journal->j_running_transaction = NULL;
@@ -991,6 +1013,9 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
             }else{
                 // 提交transaction3
                 transaction3->t_state = T_COMMIT;
+                handle7->bh->b_page1->h_signal_bit = STATE_TWO;
+                handle8->bh->b_page1->h_signal_bit = STATE_TWO;        
+                handle9->bh->b_page->h_signal_bit  = STATE_TWO;
                 if(journal->j_running_transaction==transaction3){
                     if(transaction3->t_tnext==NULL){
                         journal->j_running_transaction = NULL;
