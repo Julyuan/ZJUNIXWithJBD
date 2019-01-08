@@ -46,6 +46,7 @@ void journal_new_superblock(journal_t *journal){
 	j_sb->s_sequence = JOURNAL_DEFAULT_SEQUENCE;
 	j_sb->s_first = JOURNAL_DEFAULT_FIRST;
 
+	printk("magic:	%d\n",j_sb->s_header.h_magic);
 	printk("block size: %d\n",j_sb->s_blocksize);
 	printk("maxlen:	%d\n",j_sb->s_maxlen);
 	printk("start:	%d\n",j_sb->s_start);
@@ -181,6 +182,7 @@ out:
 	// 如果读取失败了，我们就要重新new一个superblock出来
 	// 并且我们需要释放空间
 	kfree(sb);
+	printk("enter out!\n");
 	journal_new_superblock(journal);
 	return 1;
 }
