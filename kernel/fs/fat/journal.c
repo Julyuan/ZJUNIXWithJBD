@@ -117,9 +117,6 @@ u32 load_superblock(journal_t *journal)
 	journal_superblock_t *sb;
 
 	err = journal_get_superblock(journal);
-	if (err)
-		return err;
-
 	sb = journal->j_superblock;
 
 	// 对内存中的日志结构相关变量赋值
@@ -127,6 +124,10 @@ u32 load_superblock(journal_t *journal)
 	journal->j_tail = sb->s_start;
 	journal->j_first = sb->s_first;
 	journal->j_last = sb->s_maxlen;
+	if (err)
+		return err;
+
+
 
 	return 0;
 }
