@@ -44,7 +44,8 @@ void journal_new_superblock(journal_t *journal){
 	j_sb->s_maxlen = JOURNAL_MAX_LENGTH;
 	j_sb->s_start = JOURNAL_DEFAULT_START;
 	j_sb->s_sequence = JOURNAL_DEFAULT_SEQUENCE;
-	
+	j_sb->s_first = JOURNAL_DEFAULT_FIRST;
+
 	printk("block size: %d\n",j_sb->s_blocksize);
 	printk("maxlen:	%d\n",j_sb->s_maxlen);
 	printk("start:	%d\n",j_sb->s_start);
@@ -217,6 +218,10 @@ void journal_update_superblock(journal_t* journal){
 	jsb.j_superblock.s_sequence  = journal->j_superblock->s_sequence;
 	jsb.j_superblock.s_start 	 = journal->j_superblock->s_start;
 
+
+	printk("call write_block!\n");
+	printk("magic %d\n",jsb.j_superblock.s_header.h_magic);
+	printk("block type %d\n",jsb.j_superblock.s_header.h_blocktype);
 	write_block(jsb.data,JOURNAL_SUPERBLOCK_POSITION,1);
 }
 
