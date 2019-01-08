@@ -98,7 +98,7 @@ u32 journal_recover(journal_t *journal){
 	//while(1){}
 	if (!sb->s_start) {
 		printk("no need to recovery!\n");
-		while(1){}
+		//while(1){}
 		// 如果文件系统是被正常卸载的，则不需要恢复。
 		// 递增 j_transaction_sequence，使整个日志无效。
 		journal->j_transaction_sequence = (sb->s_sequence) + 1;
