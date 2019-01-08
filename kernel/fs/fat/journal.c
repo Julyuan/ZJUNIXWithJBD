@@ -15,6 +15,10 @@ u32 init_journal_info(){
 	u32 err = 0;
 	// 从SD卡里加载superblock并读入内存
 	err = load_superblock(journal);
+	printk("JOURNAL INIT s_start:	%d\n",journal->j_superblock->s_start);
+	printk("JOURNAL INIT s_sequence:	%d\n",journal->j_superblock->s_sequence);
+	printk("JOURNAL INIT s_maxlen:	%d\n",journal->j_superblock->s_maxlen);
+	printk("JOURNAL INIT s_first:	%d\n",journal->j_superblock->s_first);
 	printk("err value: %d\n",err);
 	if(err==0){
 		// 启动日志的恢复程序
@@ -157,6 +161,8 @@ u32 journal_get_superblock(journal_t *journal)
 
 	printk("sb h_magic:	%d\n",sb->s_header.h_magic);
 	printk("sb s_blocksize %d\n",sb->s_blocksize);
+	printk("sb s_start:	%d\n",sb->s_start);
+	printk("sb s_sequence %d\n",sb->s_sequence);
 	// 如果MAGIC_NUMBER不对，则说明读取出现了错误
 	// if (sb->s_header.h_magic != JFS_MAGIC_NUMBER ||
 	//     sb->s_blocksize != journal->j_blocksize) {
