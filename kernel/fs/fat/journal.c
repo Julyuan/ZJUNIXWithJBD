@@ -127,6 +127,10 @@ u32 load_superblock(journal_t *journal)
 	if (err)
 		return err;
 
+	printk("load_super j_tail_s: %d\n",sb->s_sequence);
+	printk("load_super j_tail: %d\n",sb->s_start);
+	printk("load_super j_first: %d\n",sb->s_first);
+
 
 
 	return 0;
