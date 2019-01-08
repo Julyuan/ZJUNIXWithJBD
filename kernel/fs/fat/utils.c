@@ -63,7 +63,7 @@ u32 get_fat_entry_value(u32 clus, u32 *ClusEntryVal) {
 
     cluster_to_fat_entry(clus, &ThisFATSecNum, &ThisFATEntOffset);
 
-    index = read_fat_sector(ThisFATSecNum);
+    index = read_fat_sector(ThisFATSecNum,NULL);
     if (index == 0xffffffff)
         goto get_fat_entry_value_err;
 
@@ -83,18 +83,25 @@ u32 fs_modify_fat(u32 clus, u32 ClusEntryVal, handle_t* handle) {
 
     cluster_to_fat_entry(clus, &ThisFATSecNum, &ThisFATEntOffset);
 
-    index = read_fat_sector(ThisFATSecNum);
+    index = read_fat_sector(ThisFATSecNum, handle);
     if (index == 0xffffffff)
         goto fs_modify_fat_err;
 
     fat_buf[index].state = 3;
     
-    // 处理buffer_head代码
-    fat_buf[index].handle->bh->b_blocknr = fat_buf[index].cur;
-    fat_buf[index].handle->bh->b_page1 = &(fat_buf[index]);
-    fat_buf[index].handle = handle;
-    fat_buf[index].h_signal_bit = 1;
+    // // 处理buffer_head代码
+    // // 在这里首先判断handle是否为空
+    // if(handle != NULL){
+    //     if(fat_buf[index].handle!=NULL){
 
+    //     }
+    //     else{
+    //         fat_buf[index].handle->bh->b_blocknr = fat_buf[index].cur;
+    //         fat_buf[index].handle->bh->b_page1 = &(fat_buf[index]);
+    //         fat_buf[index].handle = handle;
+    //         fat_buf[index].h_signal_bit = 1;
+    //     }
+    // }
     ClusEntryVal &= 0x0FFFFFFF;
     fat32_val = (get_u32(fat_buf[index].buf + ThisFATEntOffset) & 0xF0000000) | ClusEntryVal;
     set_u32(fat_buf[index].buf + ThisFATEntOffset, fat32_val);

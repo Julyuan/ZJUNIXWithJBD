@@ -6,6 +6,13 @@
 
 typedef struct handle_s handle_t;
 
+// 这个宏定义用来指示h_signal_bit的值
+#define STATE_ZERO  0
+#define STATE_ONE   1
+#define STATE_TWO   2
+#define STATE_THREE 3
+#define STATE_FOUR  4
+
 /* 4k byte buffer */
 typedef struct buf_4k {
     unsigned char buf[4096];

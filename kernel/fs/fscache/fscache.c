@@ -6,7 +6,7 @@ extern struct fs_info fat_info;
 u32 fs_victim_4k(BUF_4K *buf, u32 *clock_head, u32 size, handle_t* handle) {
     u32 i;
     u32 index = *clock_head;
-
+    u32 flag = 0;
     /* sweep 1 */
     for (i = 0; i < size; i++) {
         /* if reference bit is zero */
@@ -39,25 +39,139 @@ u32 fs_victim_4k(BUF_4K *buf, u32 *clock_head, u32 size, handle_t* handle) {
 
     /* if all blocks are dirty, just use clock head */
     index = *clock_head;
-#ifdef JOURNAL
-    if(handle != NULL){
-        handle->bh->b_page = &(buf[index]);
-        handle->bh->b_blocknr = buf[index].cur;
-        buf[index].handle = handle;
-    }
-#endif
+    flag = 1;
+    // 这里的处理
+    // if(handle != NULL){
+    //     handle->bh->b_page = &(buf[index]);
+    //     handle->bh->b_blocknr = buf[index].cur;
+    //     buf[index].handle = handle;
+    //     switch(buf[index].h_signal_bit){
+    //         // 代表的是最初的情况
+    //         case STATE_ZERO: break;
+    //         // 代表transaction还在running
+    //         // 没有被提交的情况
+    //         case STATE_ONE: break;
+    //         // 代表handle所在的transaction被提交了
+    //         // 但是handle没有被checkpoint的情况
+    //         case STATE_TWO: break;
+    //         // 代表handle所在的transaction被提交了
+    //         // handle有被checkpoint的情况
+    //         case STATE_THREE: break;
+    //         default:
+    //     }
+    // }
 
 fs_victim_4k_ok:
+    // flag = 1在这里代表我们要做内存与SD卡替换的处理，
+    // 等于0则代表不用
+    if(flag==1){
+        if(handle==NULL){
+            // do nothing
+        }else{
+            switch(buf[index].h_signal_bit){
+                // 代表的是最初的情况
+                case STATE_ZERO: 
+                    buf[index].h_signal_bit = 1;
+                    buf[index].handle = handle;
+                    handle->bh->b_page = &(buf[index]);
+                    handle->bh->b_blocknr = buf[index].cur;
+                    break;
+                // 代表transaction还在running
+                // 没有被提交的情况,没有出错的话一般不会发生
+                case STATE_ONE: 
+                    printk("STATE ONE ERROR!\n");
+                    while(1){
 
+                    }
+                    break;
+                // 代表handle所在的transaction被提交了
+                // 但是handle没有被checkpoint的情况
+                case STATE_TWO: 
+                    journal_commit_transaction(buf[index].handle->h_transaction->t_journal, buf[index].handle->h_transaction);
+                    journal_erase_handle(buf[index].handle->h_transaction,buf[index].handle);
+                    buf[index].h_signal_bit = 1;
+                    buf[index].handle = handle;
+                    handle->bh->b_page = &(buf[index]);
+                    handle->bh->b_blocknr = buf[index].cur;                
+                    break;
+                // 代表handle所在的transaction被提交了
+                // handle有被checkpoint的情况
+                case STATE_THREE: 
+                    journal_erase_handle(buf[index].handle->h_transaction,buf[index].handle);
+                    buf[index].h_signal_bit = 1;
+                    buf[index].handle = handle;
+                    handle->bh->b_page = &(buf[index]);
+                    handle->bh->b_blocknr = buf[index].cur;
+                break;
+                case STATE_FOUR:   
+                    buf[index].h_signal_bit = 1;
+                    buf[index].handle = handle;
+                    handle->bh->b_page = &(buf[index]);
+                    handle->bh->b_blocknr = buf[index].cur;
+                break;
+                default:
+            }
+        }
+    }
+    else{
+        if(handle==NULL){
+            // do nothing
+        }else{
+            switch(buf[index].h_signal_bit){
+                // 代表的是最初的情况
+                case STATE_ZERO: 
+                    buf[index].h_signal_bit = 1;
+                    buf[index].handle = handle;
+                    handle->bh->b_page = &(buf[index]);
+                    handle->bh->b_blocknr = buf[index].cur;
+                break;
+                // 代表transaction还在running
+                // 没有被提交的情况
+                case STATE_ONE: 
+                    buf[index].h_signal_bit = 1;
+                    buf[index].handle = handle;
+                    handle->bh->b_page = &(buf[index]);
+                    handle->bh->b_blocknr = buf[index].cur;
+                break;
+                // 代表handle所在的transaction被提交了
+                // 但是handle没有被checkpoint的情况
+                case STATE_TWO: 
+                    journal_commit_transaction(buf[index].handle->h_transaction->t_journal, buf[index].handle->h_transaction);
+                    buf[index].h_signal_bit = 1;
+                    buf[index].handle = handle;
+                    handle->bh->b_page = &(buf[index]);
+                    handle->bh->b_blocknr = buf[index].cur;
+                break;
+                // 代表handle所在的transaction被提交了
+                // handle有被checkpoint的情况
+                case STATE_THREE: 
+                    buf[index].h_signal_bit = 1;
+                    buf[index].handle = handle;
+                    handle->bh->b_page = &(buf[index]);
+                    handle->bh->b_blocknr = buf[index].cur;
+                break;
+                //
+                case STATE_FOUR:  
+                    buf[index].h_signal_bit = 1;
+                    buf[index].handle = handle;
+                    handle->bh->b_page = &(buf[index]);
+                    handle->bh->b_blocknr = buf[index].cur;
+                break;
+                default:
+            }
+        }
+    }
     if ((++(*clock_head)) >= size)
         *clock_head = 0;
-#ifdef JOURNAL
-    if(buf[index].h_signal_bit==1 && buf[index].handle->h_transaction->t_state==T_COMMIT){
-        journal_commit_transaction(buf[index].handle->h_transaction->t_journal, buf[index].handle->h_transaction);
-    }else if(buf[index].h_signal_bit==1 && buf[index].handle->h_transaction->t_state==T_CHECKPOINT){
-        journal_erase_handle(buf[index].handle->h_transaction,buf[index].handle);
-    }
-#endif
+    
+    // 我们在这里要确保buf[index].handle不是空指针
+    // if(buf[index].handle!=NULL){
+    //     if(buf[index].h_signal_bit==1 && buf[index].handle->h_transaction->t_state==T_COMMIT){
+    //         journal_commit_transaction(buf[index].handle->h_transaction->t_journal, buf[index].handle->h_transaction);
+    //     }else if(buf[index].h_signal_bit==1 && buf[index].handle->h_transaction->t_state==T_CHECKPOINT){
+    //         journal_erase_handle(buf[index].handle->h_transaction,buf[index].handle);
+    //     }
+    // }
     return index;
 }
 

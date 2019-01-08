@@ -143,7 +143,7 @@ write_fat_sector_err:
 }
 
 /* Read fat sector */
-u32 read_fat_sector(u32 ThisFATSecNum) {
+u32 read_fat_sector(u32 ThisFATSecNum, handle_t* handle) {
     u32 index;
     /* try to find in buffer */
     for (index = 0; (index < FAT_BUF_NUM) && (fat_buf[index].cur != ThisFATSecNum); index++)
@@ -152,7 +152,77 @@ u32 read_fat_sector(u32 ThisFATSecNum) {
     /* if not in buffer, find victim & replace, otherwise set reference bit */
     if (index == FAT_BUF_NUM) {
         index = fs_victim_512(fat_buf, &fat_clock_head, FAT_BUF_NUM);
+        
+                // 日志处理
+        // 处理buffer_head代码
+        // 在这里首先判断handle是否为空
+        // 有两个要考虑的问题，分别是handle
+        // 的绑定和transaction的提交
+        if(handle != NULL){
+            // if(fat_buf[index].handle!=NULL){
 
+            // }
+            // else{
+            //     fat_buf[index].handle->bh->b_blocknr = fat_buf[index].cur;
+            //     fat_buf[index].handle->bh->b_page1 = &(fat_buf[index]);
+            //     fat_buf[index].handle = handle;
+            //     fat_buf[index].h_signal_bit = 1;
+            // }
+            switch(fat_buf[index].h_signal_bit){
+                // 代表的是最初的情况，在这里我们直接对handle赋值
+                case STATE_ZERO: 
+                    fat_buf[index].handle = handle;
+                    fat_buf[index].h_signal_bit = STATE_ONE;
+                    fat_buf[index].handle->bh->b_blocknr = fat_buf[index].cur;
+                    fat_buf[index].handle->bh->b_page1 = &(fat_buf[index]);
+                break;
+                // 代表transaction还在running
+                // 没有被提交的情况
+                case STATE_ONE: 
+                    if(fat_buf[index].handle==handle){
+
+                    }
+                    else{
+                        printk("STATE ONE ERROR!\n");
+                        while(1){
+
+                        }
+                    }
+                break;
+
+                case STATE_TWO:     //这里要做write的操作，我们直接提交，又因为该handle要写回
+                                    //我们还要调用erase_handle
+                    journal_commit_transaction(fat_buf[index].handle->h_transaction->t_journal, fat_buf[index].handle->h_transaction);
+                    journal_erase_handle(fat_buf[index].handle->h_transaction,fat_buf[index].handle);
+                    fat_buf[index].handle = handle;
+                    fat_buf[index].h_signal_bit = STATE_ONE;
+                    fat_buf[index].handle->bh->b_blocknr = fat_buf[index].cur;
+                    fat_buf[index].handle->bh->b_page1 = &(fat_buf[index]);
+                break;
+                // 代表handle所在的transaction被提交了
+                // 但是handle没有被checkpoint的情况
+                case STATE_THREE: 
+                    journal_erase_handle(fat_buf[index].handle->h_transaction,fat_buf[index].handle);
+                    fat_buf[index].handle = handle;
+                    fat_buf[index].h_signal_bit = STATE_ONE;
+                    fat_buf[index].handle->bh->b_blocknr = fat_buf[index].cur;
+                    fat_buf[index].handle->bh->b_page1 = &(fat_buf[index]);
+                break;
+                // 代表handle所在的transaction被提交了
+                // handle有被checkpoint的情况
+                case STATE_FOUR:    
+                    fat_buf[index].handle = handle;
+                    fat_buf[index].h_signal_bit = STATE_ONE;
+                    fat_buf[index].handle->bh->b_blocknr = fat_buf[index].cur;
+                    fat_buf[index].handle->bh->b_page1 = &(fat_buf[index]);
+                break;
+                default:
+            }
+        }
+        else{
+            // do nothing
+        }
+        // 这里的写index对应的块必定会调用到transaction的commit
         if (write_fat_sector(index) == 1)
             goto read_fat_sector_err;
 
@@ -161,9 +231,69 @@ u32 read_fat_sector(u32 ThisFATSecNum) {
 
         fat_buf[index].cur = ThisFATSecNum;
         fat_buf[index].state = 1;
-    } else
-        fat_buf[index].state |= 0x01;
+        
 
+    } else{
+        fat_buf[index].state |= 0x01;
+        // 虽然这个index在内存里，但是在我们的设计中也存在我们要提交transaction的可能
+        if(handle != NULL){
+            if(fat_buf[index].handle==handle){
+
+            }
+            else{
+                switch(fat_buf[index].h_signal_bit){
+                    // 代表的是最初的情况
+                    case STATE_ZERO:                    
+                        fat_buf[index].handle = handle;
+                        fat_buf[index].h_signal_bit = STATE_ONE;
+                        fat_buf[index].handle->bh->b_blocknr = fat_buf[index].cur;
+                        fat_buf[index].handle->bh->b_page1 = &(fat_buf[index]);
+                    break;
+                    // 代表transaction还在running
+                    // 没有被提交的情况
+                    case STATE_ONE:
+                        if(fat_buf[index].handle==handle){
+
+                        }
+                        else{
+                            printk("STATE ONE ERROR!\n");
+                            while(1){
+
+                            }
+                        }
+                    break;
+                    // 代表transaction的running状态结束
+                    // 没有被提交的情况
+                    case STATE_TWO: 
+                        journal_commit_transaction(fat_buf[index].handle->h_transaction->t_journal, fat_buf[index].handle->h_transaction);
+                        fat_buf[index].handle = handle;
+                        fat_buf[index].h_signal_bit = STATE_ONE;
+                        fat_buf[index].handle->bh->b_blocknr = fat_buf[index].cur;
+                        fat_buf[index].handle->bh->b_page1 = &(fat_buf[index]);
+                    break;
+                    // 代表handle所在的transaction被提交了
+                    // 但是handle没有被checkpoint的情况
+                    case STATE_THREE: 
+                        fat_buf[index].handle = handle;
+                        fat_buf[index].h_signal_bit = STATE_ONE;
+                        fat_buf[index].handle->bh->b_blocknr = fat_buf[index].cur;
+                        fat_buf[index].handle->bh->b_page1 = &(fat_buf[index]);
+                    break;
+                    // 代表handle所在的transaction被提交了
+                    // handle有被checkpoint的情况
+                    case STATE_FOUR:    
+                        fat_buf[index].handle = handle;
+                        fat_buf[index].h_signal_bit = STATE_ONE;
+                        fat_buf[index].handle->bh->b_blocknr = fat_buf[index].cur;
+                        fat_buf[index].handle->bh->b_page1 = &(fat_buf[index]);
+                    break;
+                    default:
+                }
+            }
+        }else{
+            // do nothing
+        }
+    }
     return index;
 read_fat_sector_err:
     return 0xffffffff;
@@ -616,9 +746,6 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
 
         file->entry.attr.starthi = (u16)(((curr_cluster >> 16) & 0xFFFF));
         file->entry.attr.startlow = (u16)((curr_cluster & 0xFFFF));
-
-        if (fs_clr_4k(file->data_buf, &(file->clock_head), LOCAL_DATA_BUF_NUM, fs_dataclus2sec(curr_cluster), NULL) == 1)
-            goto fs_write_err;
 
         if (fs_clr_4k(file->data_buf, &(file->clock_head), LOCAL_DATA_BUF_NUM, fs_dataclus2sec(curr_cluster), handle2) == 1)
             goto fs_write_err;
