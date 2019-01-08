@@ -205,7 +205,7 @@ void journal_update_superblock(journal_t* journal){
 
 	// 构造一个用来写回superblock的union结构
 	union journal_superblock jsb;
-
+	union journal_superblock jsb_test;
 	// 先对journal中的superblock的值进行修改
 	// 因为这里有很多不变量，所以在这里我们只需修改
 	// 两项就可以了
@@ -225,6 +225,13 @@ void journal_update_superblock(journal_t* journal){
 	printk("magic %d\n",jsb.j_superblock.s_header.h_magic);
 	printk("block type %d\n",jsb.j_superblock.s_header.h_blocktype);
 	write_block(jsb.data,JOURNAL_SUPERBLOCK_POSITION,1);
+
+	read_block(jsb_test.data, JOURNAL_SUPERBLOCK_POSITION, 1);
+
+	printk("write_block test\n");
+	printk("jsb_test magic: %d\n",jsb_test.j_superblock.s_header.h_magic);
+	printk("block type %d\n",jsb_test.j_superblock.s_header.h_blocktype);
+
 }
 
 // 写一个日志的数据块
