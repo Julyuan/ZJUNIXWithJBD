@@ -75,18 +75,30 @@ static u32 count_tags(union journal_block *bh, int size)
 
 
 u32 journal_recover(journal_t *journal){
+	printk("begin recovery\n");
+	if(journal==NULL){
+		printk("recovery error, journal is NULL\n");
+		while(1){}
+	}
     u32 err, err2;
 
 	// 日志的超级块
-    journal_superblock_t* sb;
+    journal_superblock_t* sb = NULL;
 
     struct recovery_info info;
 	
 	// 对恢复信息进行初始化
     kernel_memset(&info, 0, sizeof(info));
     sb = journal->j_superblock;
+	printk("JOURNAL RECOVERY s_start:	%d\n",sb->s_start);
+	printk("JOURNAL RECOVERY s_sequence:	%d\n",sb->s_sequence);
+	printk("JOURNAL RECOVERY s_maxlen:	%d\n",sb->s_maxlen);
+	printk("JOURNAL RECOVERY s_first:	%d\n",sb->s_first);
 
+	while(1){}
 	if (!sb->s_start) {
+		printk("no need to recovery!\n");
+		while(1){}
 		// 如果文件系统是被正常卸载的，则不需要恢复。
 		// 递增 j_transaction_sequence，使整个日志无效。
 		journal->j_transaction_sequence = (sb->s_sequence) + 1;
@@ -350,8 +362,9 @@ static u32 do_one_pass(journal_t *journal, struct recovery_info *info, enum pass
 		 * different places (but possible due to IO errors). */
 		if (info->end_transaction != next_commit_ID) {
 			printk ("JBD: recovery pass %d ended at "
-				"transaction %u, expected %u\n",
+				"transaction %d, expected %d\n",
 				pass, next_commit_ID, info->end_transaction);
+			while(1){}
 			if (!success)
 				success = -EIO;
 		}

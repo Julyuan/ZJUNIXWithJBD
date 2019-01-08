@@ -9,17 +9,21 @@ u32 init_journal_info(){
 	printk("begin: init journal!\n");
 	// 给该日志分配新的空间
 	journal = (journal_t*)kmalloc(sizeof(journal_t));
+	// allocate space for superblock pointer
+	journal->j_superblock = (journal_superblock_t*)kmalloc(sizeof(journal_superblock_t));
 
 	u32 err = 0;
 	// 从SD卡里加载superblock并读入内存
 	err = load_superblock(journal);
-
+	printk("err value: %d\n",err);
 	if(err==0){
 		// 启动日志的恢复程序
-		//journal_recover(journal);
+		journal_recover(journal);
 		printk("journal superblock load success!\n");
 		while(1){}
 	}else{
+		printk("journal superblock load failed!\n");
+		while(1){}
 		journal_update_superblock(journal);
 	}
 	return 0;
@@ -178,7 +182,7 @@ u32 journal_get_superblock(journal_t *journal)
 	// 	printk ("JBD: journal file too short\n");
 	// 	goto out;
 	// }
-
+	printk("load success1\n");
 	return 0;
 
 // 这个是读取失败的情景
