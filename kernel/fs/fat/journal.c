@@ -27,7 +27,7 @@ u32 init_journal_info(){
 		while(1){}
 	}else{
 		printk("journal superblock load failed!\n");
-		while(1){}
+		//while(1){}
 		journal_update_superblock(journal);
 	}
 	return 0;
