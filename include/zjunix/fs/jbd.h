@@ -22,7 +22,7 @@
 #define BUFFER_HEAD_CLUSTER 4096
 
 #define CHECKPOINT_NUMBER 10
-#define JFS_MAGIC_NUMBER 0xc03b3998U /* The first 4 bytes of /dev/random! */
+#define JFS_MAGIC_NUMBER 0x03b3998 /* The first 4 bytes of /dev/random! */
 
 // superblock相关宏定义
 #define JOURNAL_BLOCK_SIZE 512
