@@ -97,7 +97,7 @@ fs_victim_4k_ok:
                     buf[index].h_signal_bit = STATE_ZERO;
                     buf[index].handle = NULL;
                 break;
-                default:
+                default: break;
             }
         }else{
             switch(buf[index].h_signal_bit){
@@ -141,7 +141,7 @@ fs_victim_4k_ok:
                     handle->bh->b_page = &(buf[index]);
                     handle->bh->b_blocknr = buf[index].cur;
                 break;
-                default:
+                default: break;
             }
         }
     }
@@ -176,7 +176,7 @@ fs_victim_4k_ok:
                     buf[index].h_signal_bit = STATE_ZERO;
                     buf[index].handle = NULL;
                 break;
-                default:
+                default: break;
             }
         }else{
             switch(buf[index].h_signal_bit){
@@ -224,7 +224,7 @@ fs_victim_4k_ok:
                     handle->bh->b_blocknr = buf[index].cur;
                     handle->bh->b_size = BUFFER_HEAD_CLUSTER;
                 break;
-                default:
+                default: break;
             }
         }
     }

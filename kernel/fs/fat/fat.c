@@ -80,7 +80,7 @@ u32 init_fat_info() {
     /* Keep FSInfo in buf */
     read_block(fat_info.fat_fs_info, 1 + fat_info.base_addr, 1);
     log(LOG_OK, "Get FSInfo sector");
-
+    init_journal_info();
 #ifdef FS_DEBUG
     dump_fat_info(&(fat_info));
 #endif
@@ -222,7 +222,7 @@ u32 read_fat_sector(u32 ThisFATSecNum, handle_t* handle) {
                     fat_buf[index].handle->bh->b_page1 = &(fat_buf[index]);
                     fat_buf[index].handle->bh->b_size = BUFFER_HEAD_SECTOR;
                 break;
-                default:
+                default: break;
             }
         }
         else{
@@ -298,7 +298,7 @@ u32 read_fat_sector(u32 ThisFATSecNum, handle_t* handle) {
                         fat_buf[index].handle->bh->b_page1 = &(fat_buf[index]);
                         fat_buf[index].handle->bh->b_size = BUFFER_HEAD_SECTOR;
                     break;
-                    default:
+                    default: break;
                 }
             }
         }else{

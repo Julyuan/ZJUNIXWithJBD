@@ -5,6 +5,8 @@ extern journal_t* journal;
 
 // 日志系统最顶层的初始化
 u32 init_journal_info(){
+	// print some info
+	printk("begin: init journal!\n");
 	// 给该日志分配新的空间
 	journal = (journal_t*)kmalloc(sizeof(journal_t));
 
@@ -19,6 +21,7 @@ u32 init_journal_info(){
 // 当我们第一次使用日志系统的时候我们需要将该日志系统初始化了
 void journal_new_superblock(journal_t *journal){
 	
+	printk("journal new superblock!\n");
 	// 新建局部指针变量journal_superblock_t
 	journal_superblock_t* j_sb;
 
@@ -88,6 +91,7 @@ u32 journal_next_log_block(journal_t *journal, u32 *retp)
 // 加载SD卡中的日志超级块
 u32 load_superblock(journal_t *journal)
 {
+	printk("journal load superblock!\n");
 	int err;
 	journal_superblock_t *sb;
 
@@ -114,6 +118,7 @@ u32 load_superblock(journal_t *journal)
 
 u32 journal_get_superblock(journal_t *journal)
 {
+	printk("journal get superblock!\n");
 	// 创建superblock的union变量，方便SD卡的读取
 	union journal_superblock sb_io;
 	
@@ -235,3 +240,7 @@ u32 journal_pointer_move(u32 pointer, journal_t* journal, u32 length){
 	return pointer;
 }
 
+
+void journal_finish(journal_t* journal){
+
+}
