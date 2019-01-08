@@ -151,12 +151,16 @@ u32 journal_get_superblock(journal_t *journal)
 	sb->s_sequence = sb_io.j_superblock.s_sequence;
 	sb->s_blocksize = sb_io.j_superblock.s_blocksize;
 
+	printk("sb h_magic:	%d\n",sb->s_header.h_magic);
+	printk("sb s_blocksize %d\n",sb->s_blocksize);
 	// 如果MAGIC_NUMBER不对，则说明读取出现了错误
-	if (sb->s_header.h_magic != JFS_MAGIC_NUMBER ||
-	    sb->s_blocksize != journal->j_blocksize) {
+	// if (sb->s_header.h_magic != JFS_MAGIC_NUMBER ||
+	//     sb->s_blocksize != journal->j_blocksize) {
+	if(sb->s_header.h_magic != JFS_MAGIC_NUMBER) {
 		printk("JBD: no valid journal superblock found\n");
 		goto out;
 	}
+	
 
 	// 判断journal的blocktype
 	switch((sb->s_header.h_blocktype)) {
