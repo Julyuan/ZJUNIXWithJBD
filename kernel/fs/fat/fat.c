@@ -1271,6 +1271,7 @@ fs_find_empty_entry_err:
 
 /* create an empty file with attr */
 u32 fs_create_with_attr(u8 *filename, u8 attr) {
+    printk("fs create 1\n");
     u32 i;
     u32 l1 = 0;
     u32 l2 = 0;
@@ -1281,6 +1282,7 @@ u32 fs_create_with_attr(u8 *filename, u8 attr) {
     /* If file exists */
     if (fs_open(&file_creat, filename) == 0)
         goto fs_creat_err;
+    printk("fs create 2\n");
 
     for (i = 255; i >= 0; i--)
         if (file_creat.path[i] != 0) {
@@ -1301,6 +1303,7 @@ u32 fs_create_with_attr(u8 *filename, u8 attr) {
 
         if (fs_find(&file_creat) == 1)
             goto fs_creat_err;
+        printk("fs create 3\n");
 
         /* If path not found */
         if (file_creat.dir_entry_pos == 0xFFFFFFFF)
@@ -1311,17 +1314,22 @@ u32 fs_create_with_attr(u8 *filename, u8 attr) {
         index = fs_read_512(dir_data_buf, fs_dataclus2sec(clus), &dir_data_clock_head, DIR_DATA_BUF_NUM);
         if (index == 0xffffffff)
             goto fs_creat_err;
+        printk("fs create 4\n");
 
         file_creat.dir_entry_pos = clus;
     }
     /* otherwise, open root directory */
     else {
+        printk("fs create 5\n");
+
         index = fs_read_512(dir_data_buf, fs_dataclus2sec(2), &dir_data_clock_head, DIR_DATA_BUF_NUM);
         if (index == 0xffffffff)
             goto fs_creat_err;
+        printk("fs create 6\n");
 
         file_creat.dir_entry_pos = 2;
     }
+    printk("fs create 7\n");
 
     /* find an empty entry */
     index = fs_find_empty_entry(&empty_entry, index);
@@ -1330,6 +1338,8 @@ u32 fs_create_with_attr(u8 *filename, u8 attr) {
 
     for (i = l1 + 1; i <= l2; i++)
         file_creat.path[i - l1 - 1] = filename[i];
+
+    printk("fs create 8\n");
 
     file_creat.path[l2 - l1] = 0;
     fs_next_slash(file_creat.path);

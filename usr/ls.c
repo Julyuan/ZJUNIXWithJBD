@@ -54,18 +54,18 @@ int ls(char *para) {
     unsigned int r;
     unsigned int p_len;
     FS_FAT_DIR dir;
-    kernel_printf("start ls\n");
+  //  kernel_printf("start ls\n");
     p = cut_front_blank(p);
     p_len = strlen(p);
     next = each_param(p, pwd, 0, ' ');
-    kernel_printf("start open dir\n");
+  //  kernel_printf("start open dir\n");
     if (fs_open_dir(&dir, pwd)) {
         kernel_printf("open dir(%s) failed : No such directory!\n", pwd);
         return 1;
     }
-    kernel_printf("end open dir\n");
+ //   kernel_printf("end open dir\n");
 readdir:
-    kernel_printf("start read dir\n");
+ //   kernel_printf("start read dir\n");
     r = fs_read_dir(&dir, (unsigned char *)&entry);
     if (1 != r) {
         if (-1 == r) {
