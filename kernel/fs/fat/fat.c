@@ -1200,9 +1200,10 @@ fs_write_end:
 
     /* update location */
     file->loc += count;
-
+    while(1){}
     return cc;
 fs_write_err:
+    while(1){}
     return 0xFFFFFFFF;
 }
 
