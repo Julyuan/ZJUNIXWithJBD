@@ -752,18 +752,20 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
         if(journal->j_running_transaction!=NULL)
             journal->j_running_transaction->t_tprev = transaction;
         journal->j_running_transaction = transaction;
-
+        printk("fs_write 1\n");
     
         if (fs_alloc(&curr_cluster, handle1) == 1) {
             goto fs_write_err;
         }
+        printk("fs_write 2\n");
 
         file->entry.attr.starthi = (u16)(((curr_cluster >> 16) & 0xFFFF));
         file->entry.attr.startlow = (u16)((curr_cluster & 0xFFFF));
 
         if (fs_clr_4k(file->data_buf, &(file->clock_head), LOCAL_DATA_BUF_NUM, fs_dataclus2sec(curr_cluster), handle2) == 1)
             goto fs_write_err;
-        
+        printk("fs_write 3\n");
+
         // transaction执行完毕，将该transaction从running队列转移到commit队列
         transaction->t_state = T_COMMIT;
 

@@ -8,6 +8,7 @@ u32 read_block(u8 *buf, u32 addr, u32 count) {
 }
 
 u32 write_block(u8 *buf, u32 addr, u32 count) {
+    printk("call write_block, addr = %d\n",addr);
     return sd_write_block(buf, addr, count);
 }
 
