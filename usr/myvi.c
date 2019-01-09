@@ -368,6 +368,8 @@ int myvi(char *para) {
     }
 
     cursor_freq = pre_cursor_freq;
+    kernel_printf("vi finish\n");
+    while(1){}
     kernel_set_cursor();
     kernel_clear_screen(31);
 
