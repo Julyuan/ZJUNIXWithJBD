@@ -1,6 +1,6 @@
 #ifndef _SD_H
 #define _SD_H
-
+#define SD_DEBUG
 #include <driver/sd.h>
 
 int sd_write_sector_blocking(int id, void* buffer);

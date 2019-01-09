@@ -3,6 +3,7 @@
 #include <driver/vga.h>
 #include <zjunix/fs/fat.h>
 
+
 extern int cursor_freq;
 int pre_cursor_freq;
 
@@ -369,7 +370,7 @@ int myvi(char *para) {
 
     cursor_freq = pre_cursor_freq;
     kernel_printf("vi finish\n");
-    while(1){}
+//while(1){}
     kernel_set_cursor();
     kernel_clear_screen(31);
 

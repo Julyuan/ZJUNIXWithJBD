@@ -113,16 +113,20 @@ u32 sd_read_block(unsigned char* buf, unsigned long addr, unsigned long count) {
 u32 sd_write_block(unsigned char* buf, unsigned long addr, unsigned long count) {
     u32 i;
     u32 result;
+    kernel_printf("call sd_write_block\n");
+
 #ifdef SD_DEBUG
     kernel_printf("Count: %x, Addr: %x", count, addr);
 #endif
     if (1 == count) {
         // write single block
+        kernel_printf("write single block, addr = %d\n");
         return sd_write_sector_blocking(addr, buf);
+        while(1){}
     } else {
         // write multiple block
         for (i = 0; i < count; ++i) {
-            kernel_printf("i = %d\n",i);
+            kernel_printf("addr = %d\n",addr+i);
             result = sd_write_sector_blocking(addr + i, buf + i * SECSIZE);
             if (0 != result) {
                 kernel_printf("Error: sd_write_sector_blocking failed:%x\n", result);
@@ -130,6 +134,7 @@ u32 sd_write_block(unsigned char* buf, unsigned long addr, unsigned long count) 
                 return 1;
             }
         }
+        while(1){}
         return 0;
     }
 }

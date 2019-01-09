@@ -309,3 +309,4 @@ void journal_finish(journal_t* journal){
 
 	return;
 }
+

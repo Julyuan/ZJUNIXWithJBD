@@ -689,6 +689,7 @@ u32 fs_alloc(u32 *new_alloc, handle_t* handle) {
 
     u32 i;
 
+    printk("clus: %d, sectors_per_cluster: %d\n",clus, fat_info.BPB.attr.sectors_per_cluster);
     /* Erase new allocated cluster */
     if (write_block(new_alloc_empty, fs_dataclus2sec(clus), fat_info.BPB.attr.sectors_per_cluster) == 1)
         goto fs_alloc_err;
@@ -717,6 +718,8 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
     
     /* If file is empty, alloc a new data cluster */
     u32 curr_cluster = get_start_cluster(file);
+
+    printk("curr_cluster:   %d\n",curr_cluster);
     if (curr_cluster == 0) {
         printk("go into file empty case\n");
         // 新建一个transaction并分配空间
@@ -1212,10 +1215,10 @@ fs_write_end:
 
     /* update location */
     file->loc += count;
-    while(1){}
+   // while(1){}
     return cc;
 fs_write_err:
-    while(1){}
+   // while(1){}
     return 0xFFFFFFFF;
 }
 
