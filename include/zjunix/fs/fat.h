@@ -153,4 +153,9 @@ u32 get_entry_filesize(u8 *entry);
 
 u32 get_entry_attr(u8 *entry);
 
+void journal_print_transaction_info(transaction_t* transaction);
+
+void journal_print_commit_info(journal_t* journal);
+void journal_print_block_info(journal_t* journal, u32 start, u32 end);
+void journal_print_property_info(journal_t* journal);
 #endif  // !_ZJUNIX_FS_FAT_H

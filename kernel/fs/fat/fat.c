@@ -511,11 +511,12 @@ fs_fflush_err:
     return 1;
 }
 
+// 这个是关闭文件的函数
 /* Close: write all buf in memory to SD */
 u32 fs_close(FILE *file) {
     u32 i;
     u32 index;
-
+    
     /* Write directory entry */
     index = fs_read_512(dir_data_buf, file->dir_entry_sector, &dir_data_clock_head, DIR_DATA_BUF_NUM);
     if (index == 0xffffffff)
@@ -530,10 +531,32 @@ u32 fs_close(FILE *file) {
     if (fs_fflush() == 1)
         goto fs_close_err;
     /* write local data buffer */
-    for (i = 0; i < LOCAL_DATA_BUF_NUM; i++)
+    // 本着影响最小的原则，在这里我们不修改fs_write_4k
+    // 而是在写回之前进行判断
+    for (i = 0; i < LOCAL_DATA_BUF_NUM; i++){
+        u32 flag = 0;
+        BUF_4K *buf = file->data_buf;       
+
+        if(file->data_buf[i].handle!=NULL){
+            switch(file->data_buf[i].h_signal_bit){
+                case STATE_ZERO:    break;
+                case STATE_ONE:     break;
+                case STATE_TWO:              
+                    journal_commit_transactions(buf[index].handle->h_transaction->t_journal, buf[index].handle->h_transaction);
+                    buf[index].h_signal_bit = STATE_THREE;
+                    flag = 1;
+                    //buf[index].handle = NULL;
+                    break;
+                case STATE_THREE:   break;
+                case STATE_FOUR:    break;
+                default: break;
+            }
+        }
         if (fs_write_4k(file->data_buf + i) == 1)
             goto fs_close_err;
-
+        if(flag==1)
+            journal_erase_handle(buf[index].handle->h_transaction, buf[index].handle);
+    }
     return 0;
 fs_close_err:
     return 1;
@@ -765,6 +788,8 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
         if(journal->j_running_transaction!=NULL)
             journal->j_running_transaction->t_tprev = transaction;
         journal->j_running_transaction = transaction;
+
+
         printk("fs_write 1\n");
     
         if (fs_alloc(&curr_cluster, handle1) == 1) {
@@ -779,9 +804,15 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
             goto fs_write_err;
         printk("fs_write 3\n");
 
+    #ifdef JOURNAL_DEBUG
+        // 我们在这里打印transaction的信息
+        printk("print transaction");
+        journal_print_transaction_info(transaction);
+        while(1){}
+    #endif 
         // transaction执行完毕，将该transaction从running队列转移到commit队列
         transaction->t_state = T_COMMIT;
-
+        journal->j_commit_transaction_count++;
         // 修改handle对应的BUF的状态
         handle1->bh->b_page1->h_signal_bit = STATE_TWO;
         handle2->bh->b_page->h_signal_bit = STATE_TWO;
@@ -831,6 +862,12 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
             transaction_t* transaction1 = (transaction_t*)kmalloc(sizeof(transaction_t));
 
             handle_t* handle3, *handle4, *handle5;  
+            
+            // 变量分配空间之前要全部设为NULL
+            handle3 = NULL;
+            handle4 = NULL;
+            handle5 = NULL;
+
 
             // 将该transaction连接到j_running_transaction的队列里去
             transaction1->t_tnext = journal->j_running_transaction; 
@@ -891,11 +928,16 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
             if (fs_clr_4k(file->data_buf, &(file->clock_head), LOCAL_DATA_BUF_NUM, fs_dataclus2sec(next_cluster), handle5) == 1)
                 goto fs_write_err;
 
-
+        #ifdef JOURNAL_DEBUG
+            // 我们在这里打印transaction的信息
+            printk("print transaction1");
+            journal_print_transaction_info(transaction1);
+            while(1){}
+        #endif 
 
             // transaction执行完毕，将该transaction从running队列转移到commit队列
             transaction1->t_state = T_COMMIT;
-            
+            journal->j_commit_transaction_count++;
             handle3->bh->b_page1->h_signal_bit = STATE_TWO;
             handle4->bh->b_page1->h_signal_bit = STATE_TWO;
             handle5->bh->b_page->h_signal_bit = STATE_TWO;
@@ -934,13 +976,29 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
 
     u32 cc = 0;
     u32 index = 0;
+
+    // 日志系统新增变量
     u32 flag = 0;
     // flag表示块的来源是已有的还是新出现的
+    // flag为0
 
+    // 这里我们直接创建了两个transaction
     transaction_t* transaction2;
     handle_t* handle6;
     transaction_t *transaction3;
     handle_t *handle7, *handle8, *handle9;
+
+    // 先把这些赋成NULL
+    transaction2 = NULL;
+    transaction3 = NULL;
+    handle6 = NULL;
+    handle7 = NULL;
+    handle8 = NULL;
+    handle9 = NULL;
+
+
+
+
 
     // 在这一层的while里，读入只会影响到一个cluster，所以我们在这里处理一个transaction
     // 如果是不需要新增块的。我们就处理transaction2，里面只有一个文件数据的handle
@@ -982,11 +1040,60 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
             handle6->h_tprev = NULL;
             handle6->h_cpnext = NULL;
             handle6->h_cpprev = NULL;
+            
+            // 这里也要考虑一个提交的情况
+            BUF_4K* buf = file->data_buf;
 
-            file->data_buf[index].handle = handle6;
-            file->data_buf[index].h_signal_bit = STATE_ONE;
-            handle6->bh->b_page = &(file->data_buf[index]);
-            handle6->bh->b_blocknr = file->data_buf[index].cur;
+            // 理论上说在fs_read_4k的情景下
+            // 只会出现STATE_ZERO和STATE_FOUR
+            // 这两种情况可以当作一种来处理
+            switch(buf[index].h_signal_bit){
+                // 代表的是最初的情况
+                case STATE_ZERO: 
+                    buf[index].h_signal_bit = STATE_ONE;
+                    buf[index].handle = handle6;
+                    handle6->bh->b_page = &(buf[index]);
+                    handle6->bh->b_blocknr = buf[index].cur;
+                    break;
+                // 代表transaction还在running
+                // 没有被提交的情况,没有出错的话一般不会发生
+                case STATE_ONE: 
+                    printk("STATE ONE ERROR!\n");
+                    while(1){
+
+                    }
+                    break;
+                // 代表handle所在的transaction被提交了
+                // 但是handle没有被checkpoint的情况，这种情况
+                case STATE_TWO: 
+                    journal_commit_transactions(buf[index].handle->h_transaction->t_journal, buf[index].handle->h_transaction);
+                    journal_erase_handle(buf[index].handle->h_transaction,buf[index].handle);
+                    buf[index].h_signal_bit = 1;
+                    buf[index].handle = handle6;
+                    handle6->bh->b_page = &(buf[index]);
+                    handle6->bh->b_blocknr = buf[index].cur;                
+                    break;
+                // 代表handle所在的transaction被提交了
+                // handle有被checkpoint的情况
+                case STATE_THREE: 
+                    journal_erase_handle(buf[index].handle->h_transaction,buf[index].handle);
+                    buf[index].h_signal_bit = 1;
+                    buf[index].handle = handle6;
+                    handle6->bh->b_page = &(buf[index]);
+                    handle6->bh->b_blocknr = buf[index].cur;
+                break;
+                case STATE_FOUR:   
+                    buf[index].h_signal_bit = 1;
+                    buf[index].handle = handle6;
+                    handle6->bh->b_page = &(buf[index]);
+                    handle6->bh->b_blocknr = buf[index].cur;
+                break;
+                default: break;
+            }
+            // file->data_buf[index].handle = handle6;
+            // file->data_buf[index].h_signal_bit = STATE_ONE;
+            // handle6->bh->b_page = &(file->data_buf[index]);
+            // handle6->bh->b_blocknr = file->data_buf[index].cur;
         }
         /* If in same cluster, just write */
         if (start_clus == end_clus) {
@@ -999,6 +1106,7 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
                 // transaction2执行完毕，将该transaction从running队列转移到commit队列
                 // transaction2提交
                 transaction2->t_state = T_COMMIT;
+                journal->j_commit_transaction_count++;
                 handle6->bh->b_page->h_signal_bit = STATE_TWO;
                 if(journal->j_running_transaction==transaction2){
                     if(transaction2->t_tnext==NULL){
@@ -1031,6 +1139,7 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
             }else{
                 // 提交transaction3
                 transaction3->t_state = T_COMMIT;
+                journal->j_commit_transaction_count++;
                 handle7->bh->b_page1->h_signal_bit = STATE_TWO;
                 handle8->bh->b_page1->h_signal_bit = STATE_TWO;        
                 handle9->bh->b_page->h_signal_bit  = STATE_TWO;
@@ -1074,6 +1183,7 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
                 
                 // transaction2执行完毕，将该transaction从running队列转移到commit队列
                 transaction2->t_state = T_COMMIT;
+                journal->j_commit_transaction_count++;
                 if(journal->j_running_transaction==transaction2){
                     if(transaction2->t_tnext==NULL){
                         journal->j_running_transaction = NULL;
@@ -1105,6 +1215,7 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
             }
             else{
                 transaction3->t_state = T_COMMIT;
+                journal->j_commit_transaction_count++;
                 if(journal->j_running_transaction==transaction3){
                     if(transaction3->t_tnext==NULL){
                         journal->j_running_transaction = NULL;
@@ -1287,7 +1398,11 @@ fs_find_empty_entry_err:
 
 /* create an empty file with attr */
 u32 fs_create_with_attr(u8 *filename, u8 attr) {
+
+#ifdef FS_CREATE_DEBUG
     printk("fs create 1\n");
+#endif
+
     u32 i;
     u32 l1 = 0;
     u32 l2 = 0;
@@ -1298,7 +1413,10 @@ u32 fs_create_with_attr(u8 *filename, u8 attr) {
     /* If file exists */
     if (fs_open(&file_creat, filename) == 0)
         goto fs_creat_err;
+
+#ifdef FS_CREATE_DEBUG
     printk("fs create 2\n");
+#endif
 
     for (i = 255; i >= 0; i--)
         if (file_creat.path[i] != 0) {
@@ -1319,8 +1437,10 @@ u32 fs_create_with_attr(u8 *filename, u8 attr) {
 
         if (fs_find(&file_creat) == 1)
             goto fs_creat_err;
-        printk("fs create 3\n");
 
+#ifdef FS_CREATE_DEBUG
+        printk("fs create 3\n");
+#endif
         /* If path not found */
         if (file_creat.dir_entry_pos == 0xFFFFFFFF)
             goto fs_creat_err;
@@ -1330,23 +1450,30 @@ u32 fs_create_with_attr(u8 *filename, u8 attr) {
         index = fs_read_512(dir_data_buf, fs_dataclus2sec(clus), &dir_data_clock_head, DIR_DATA_BUF_NUM);
         if (index == 0xffffffff)
             goto fs_creat_err;
-        printk("fs create 4\n");
 
+#ifdef FS_CREATE_DEBUG
+        printk("fs create 4\n");
+#endif
         file_creat.dir_entry_pos = clus;
     }
     /* otherwise, open root directory */
     else {
+#ifdef FS_CREATE_DEBUG
         printk("fs create 5\n");
-
+#endif
         index = fs_read_512(dir_data_buf, fs_dataclus2sec(2), &dir_data_clock_head, DIR_DATA_BUF_NUM);
         if (index == 0xffffffff)
             goto fs_creat_err;
-        printk("fs create 6\n");
 
+    #ifdef FS_CREATE_DEBUG
+        printk("fs create 6\n");
+    #endif
         file_creat.dir_entry_pos = 2;
     }
-    printk("fs create 7\n");
 
+#ifdef FS_CREATE_DEBUG
+    printk("fs create 7\n");
+#endif
     /* find an empty entry */
     index = fs_find_empty_entry(&empty_entry, index);
     if (index == 0xffffffff)
@@ -1355,8 +1482,9 @@ u32 fs_create_with_attr(u8 *filename, u8 attr) {
     for (i = l1 + 1; i <= l2; i++)
         file_creat.path[i - l1 - 1] = filename[i];
 
+#ifdef FS_CREATE_DEBUG
     printk("fs create 8\n");
-
+#endif
     file_creat.path[l2 - l1] = 0;
     fs_next_slash(file_creat.path);
 

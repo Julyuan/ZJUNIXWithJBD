@@ -20,9 +20,26 @@ u32 init_journal_info(){
 	printk("JOURNAL INIT s_maxlen:	%d\n",journal->j_superblock->s_maxlen);
 	printk("JOURNAL INIT s_first:	%d\n",journal->j_superblock->s_first);
 	printk("err value: %d\n",err);
+
+	// 日志中相关指针变量初始化
 	journal->j_checkpoint_transaction = NULL;
 	journal->j_committing_transaction = NULL;
 	journal->j_running_transaction = NULL;
+
+	// 将需要提交的日志设为0
+	journal->j_commit_transaction_count = 0;
+
+	// 这两个是乱写的，因为没有用到
+	journal->j_errno = 0;
+	journal->j_flags = 123;
+	
+	// j_free是空闲的块，初始化以后应该变成最大的了
+	journal->j_free = JOURNAL_MAX_LENGTH - 1;
+	// head代表第一个空闲的块，在这里应该置为1
+	// 因为日志在recover后所有内容都无效了
+	journal->j_head = 1;
+
+	
 	if(err==0){
 		// 启动日志的恢复程序
 		journal_recover(journal);
@@ -310,3 +327,110 @@ void journal_finish(journal_t* journal){
 	return;
 }
 
+// 以下的函数的主要功能是打印信息，事实上这些函数和日志系统功能
+// 的实现完全没有任何的联系，但是它们可以帮助验收和debug
+
+
+// 这个函数用来打印单个transaction的相关信息
+void journal_print_transaction_info(transaction_t* transaction){
+	printk("transaction id: %d\n",transaction->t_tid);
+	printk("transaction handle count: %d\n",transaction->t_handle_count);
+	printk("print transaction%d handles:\n", transaction->t_tid);
+	handle_t* handle_p1 = transaction->t_buffers;
+	while(handle_p1!=NULL){
+		printk("handle blocknr: %d\n",handle_p1->bh->b_blocknr);
+	}
+	printk("\n");
+
+}
+
+// 这个函数用来打印内存中日志的提交信息
+void journal_print_commit_info(journal_t *journal){
+	printk("print committing transactions in memory:\n");
+
+	// 获取日志中的第一个transac
+	transaction_t* transaction_p1 = NULL;
+	transaction_t* transaction_p2 = NULL;
+
+	transaction_p1 = journal->j_committing_transaction;
+	transaction_p2 = journal->j_checkpoint_transaction;
+	while(transaction_p1!=NULL){
+		journal_print_transaction_info(transaction_p1);
+		transaction_p1 = transaction_p1->t_tnext;
+	}
+	printk("print committing transactions finish\n");
+
+}
+
+// 这个函数用来打印内存中日志的检查点信息
+void journal_print_commit_info(journal_t* journal){
+
+	// 获取日志中的第一个transac
+	transaction_t* transaction_p2 = NULL;
+
+	transaction_p2 = journal->j_checkpoint_transaction;
+	printk("print checkpoint transactions in memory:\n");
+
+	while(transaction_p2!=NULL){
+		printk("transaction id: %d\n",transaction_p2->t_tid);
+		printk("transaction handle count: %d\n",transaction_p2->t_handle_count);
+		printk("print transaction%d handles:\n", transaction_p2->t_tid);
+		handle_t* handle_p2 = transaction_p2->t_buffers;
+		while(handle_p2!=NULL){
+			printk("handle blocknr: %d\n",handle_p2->bh->b_blocknr);
+			handle_p2 = handle_p2->h_cpnext;
+		}
+		printk("\n");
+		transaction_p2 = transaction_p2->t_tnext;
+	}
+}
+
+// 这个函数用来打印日志块的信息，事先说明这里我们假定我们要打印
+// 连续的日志块，start代表起始的块号，end代表终止的块号
+void journal_print_block_info(journal_t* journal, u32 start, u32 end){
+	u32 i = 0;
+	// 为了方便起见，我们在这里不设计start到end的环形结构
+	// end必须要确保不小于start
+	if(start<=0 || start >= JOURNAL_MAX_LENGTH){
+		printk("Error! start range error!\n");
+		while(1){}
+	}
+
+	if(end<=0 || end >= JOURNAL_MAX_LENGTH){
+		printk("Error! end range error!\n");
+		while(1){}
+	}
+
+	if(start > end){
+		printk("Error! start pos is bigger than end pos\n");
+		while(1){
+		}
+	}
+
+	u32 i = 0;
+	union journal_block jb;
+	for(i=start;i<=end;i++){
+		read_block(jb.data,JOURNAL_SUPERBLOCK_POSITION+start,1);
+
+	}
+}
+
+// 这个函数用来打印日志相关性质
+void journal_print_property_info(journal_t* journal){
+	printk("print journal property information\n");
+	printk("journal head:	%d\n", journal->j_head);
+	printk("journal free:	%d\n", journal->j_free);
+	printk("journal commit transaction count: %d\n",journal->j_commit_transaction_count);
+	printk("print journal property info finish\n");
+}
+
+// 分析一个描述符块有几个对应的数据块
+u32 journal_analyze_descriptor(union journal_superblock jsb){
+
+	u32 count = 0;
+
+cor_case:
+	return count;
+err_case:
+	return 12777;
+}

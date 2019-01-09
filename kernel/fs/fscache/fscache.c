@@ -103,7 +103,7 @@ fs_victim_4k_ok:
             switch(buf[index].h_signal_bit){
                 // 代表的是最初的情况
                 case STATE_ZERO: 
-                    buf[index].h_signal_bit = 1;
+                    buf[index].h_signal_bit = STATE_ONE;
                     buf[index].handle = handle;
                     handle->bh->b_page = &(buf[index]);
                     handle->bh->b_blocknr = buf[index].cur;
@@ -243,8 +243,10 @@ fs_victim_4k_ok:
 }
 
 /* Write current 4k buffer */
+// 这个是fs_write_4k的函数，我们需要先检查buf的一致性
 u32 fs_write_4k(BUF_4K *f) {
     if ((f->cur != 0xffffffff) && (((f->state) & 0x02) != 0)) {
+        
         if (write_block(f->buf, f->cur, fat_info.BPB.attr.sectors_per_cluster) == 1)
             goto fs_write_4k_err;
 

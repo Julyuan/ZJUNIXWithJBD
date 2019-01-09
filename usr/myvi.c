@@ -4,14 +4,20 @@
 #include <zjunix/fs/fat.h>
 
 
+// 操作系统shell里实现vi命令对应的源文件
 extern int cursor_freq;
 int pre_cursor_freq;
-
+// file代表内存里的文件对象
 FILE file;
+
+// is_new_file判断是不是新文件
 int is_new_file;
 
+// 缓存区
 char buffer[BUFFER_SIZE];
 char instruction[COLUMN_LEN] = "";
+
+// 文件名字的指针
 char *filename;
 int inst_len = 0;
 int size = 0;
@@ -21,6 +27,9 @@ int page_end;
 int err;
 int mode;
 
+// 以上都是文件系统里的全局变量
+
+// myvi的初始化函数，将相关变量设置成0
 char myvi_init() {
     int i;
     size = 0;
@@ -36,6 +45,7 @@ char myvi_init() {
     return 0;
 }
 
+// 字母的大写转小写
 char to_lower_case(char ch) {
     if (ch >= 'A' && ch <= 'Z')
         return ch - 'A' + 'a';
@@ -43,6 +53,7 @@ char to_lower_case(char ch) {
         return ch;
 }
 
+// 字符串拷贝
 char *mystrcpy(char *dest, const char *src) {
     do {
         *(dest++) = *(src++);
@@ -51,12 +62,15 @@ char *mystrcpy(char *dest, const char *src) {
     return dest;
 }
 
+// 加载文件函数，输入的参数是文件的路径
 void load_file(char *file_path) {
-    int file_size;
+    int file_size;  // 文件的大小
     int cnt = 0;
-    unsigned char newch;
-    unsigned int ret = fs_open(&file, file_path);
+    unsigned char newch;    
+    // 将该文件打开，并用全局变量file绑定
+    unsigned int ret = fs_open(&file, file_path);   
 
+    // 如果ret==1，代表文件不存在
     if (ret != 0) {
         is_new_file = 1;
         buffer[size++] = '\n';
@@ -65,36 +79,42 @@ void load_file(char *file_path) {
         is_new_file = 0;
     }
 
+    // 得到文件的大小
     file_size = get_entry_filesize(file.entry.data);
     int i = 0;
+    // 这里的操作是从原来的文件里逐个读入字符
     for (i = 0; i < file_size; i++) {
         fs_read(&file, &newch, 1);
         if (newch != 13) {
             buffer[size++] = (char)newch;
         }
+        // 如果size超出了buffer_size，我们就报错
         if (size == BUFFER_SIZE - 1) {
             err = 2;
             return;
         }
     }
-
+    // 设置结尾的字符串
     if (size == 0 || buffer[size - 1] != '\n') {
         buffer[size++] = '\n';
     }
     fs_close(&file);
 }
-
+// 保存文件
 void save_file() {
+    // 判断是否是新的文件，如果是新的就创建一个新的文件
     if (is_new_file) {
         fs_create(filename);
     }
-
+    // 顺序调用文件打开函数、定位函数和写文件函数，因为一个文件
+    // 原来的内容已经放在buffer里面了，所以定位的位置是0
     fs_open(&file, filename);
     fs_lseek(&file, 0);
     fs_write(&file, buffer, size);
     int ret = fs_close(&file);
 }
-
+// 这个函数是插入函数。因为在这里key是插入到buffer的中间
+// 后面的内容都需要后移一格
 void insert_key(char key, int site) {
     if (size >= BUFFER_SIZE) {
         err = 1;
@@ -107,18 +127,19 @@ void insert_key(char key, int site) {
     buffer[site] = key;
     size++;
 }
-
+// 删除，原理和之前的相同
 void delete_key(int site) {
     int i = 0;
     for (i = site; i < size - 1; i++)
         buffer[i] = buffer[i + 1];
     size--;
 }
-
+// 将char显示在vga屏幕上
 void put_char_on_screen(char ch, int row, int column, int color) {
     kernel_putchar_at(ch, color & 0xFFFF, (color >> 16) & 0xFFFF, row, column);
 }
 
+// 屏幕刷新函数，将整个屏幕的内容刷新
 void screen_flush() {
     int row = 0, column = 0;
     int loc = page_location;
@@ -195,11 +216,12 @@ void screen_flush() {
             put_char_on_screen(' ', ROW_LEN, i, COLOR_GREEN_WHITE);
     }
 }
-
+// 获得字符的输入
 char get_key() {
     return kernel_getchar();
 }
 
+// 定位到上一行
 void page_location_last_line() {
     int loc = page_location;
     do {
@@ -209,6 +231,7 @@ void page_location_last_line() {
         page_location = loc;
 }
 
+// 定位到下一行
 void page_location_next_line() {
     int loc = page_location;
     while (loc < size && buffer[loc] != '\n')
@@ -217,6 +240,7 @@ void page_location_next_line() {
         page_location = loc + 1;
 }
 
+// 光标移动的函数
 void cursor_prev_line() {
     int loc = cursor_location;
     int offset = 0;
@@ -232,6 +256,7 @@ void cursor_prev_line() {
     cursor_location = loc;
 }
 
+// 光标移动的函数
 void cursor_next_line() {
     int loc = cursor_location;
     while (loc < size && buffer[loc] != '\n')
@@ -241,6 +266,8 @@ void cursor_next_line() {
         cursor_location = loc;
 }
 
+// 输入是一个key，根据不同的模式
+// 执行不同的方法
 void do_command_mode(char key) {
     switch (key) {
         case 'j':

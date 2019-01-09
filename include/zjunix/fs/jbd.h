@@ -26,7 +26,7 @@
 
 // superblock相关宏定义
 #define JOURNAL_BLOCK_SIZE 512
-#define JOURNAL_MAX_LENGTH 100
+#define JOURNAL_MAX_LENGTH 128
 #define JOURNAL_DEFAULT_START 		0
 #define JOURNAL_DEFAULT_SEQUENCE 	0
 #define JOURNAL_DEFAULT_FIRST		1
@@ -191,7 +191,7 @@ struct transaction_s
 struct journal_s
 {
 	unsigned long		j_flags;	// journal的状态
-	int			j_errno;			
+	u32			j_errno;			
 	journal_superblock_t	*j_superblock;
 	u32			j_format_version;
 
@@ -216,7 +216,7 @@ struct journal_s
 	// 日志块的范围[j_first, j_last)
 	// 来自于journal_superblock_t
 
-	int			j_blocksize;
+	u32			j_blocksize;
 
 	unsigned int		j_maxlen;
 	// 磁盘上journal的最大块数
@@ -230,7 +230,7 @@ struct journal_s
 	tid_t		j_commit_sequence;
 	// 最近提交的transaction的顺序号
 
-	int			j_max_transaction_buffers;
+	u32			j_max_transaction_buffers;
 	// 一次提交允许的最多的元数据缓冲区块数
 
 	// 指向journal正在使用的revoke hash table
@@ -239,7 +239,7 @@ struct journal_s
 	u32 j_commit_transaction_count;	
 	// 本journal相关的、即将commit的transaction的数目
 
-	int			j_wbufsize;
+	u32			j_wbufsize;
 	// 一个描述符块中可以记录的块数
 };
 

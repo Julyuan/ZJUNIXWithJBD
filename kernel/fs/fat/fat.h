@@ -4,6 +4,7 @@
 #include <zjunix/fs/fat.h>
 #include <zjunix/fs/jbd.h>
 #include <zjunix/slab.h>
+#define JOURNAL_DEBUG
 #define PAGE_SHIFT 12
 #define PAGE_SIZE (1 << PAGE_SHIFT)
 
