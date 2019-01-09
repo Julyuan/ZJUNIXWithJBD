@@ -88,12 +88,14 @@ u32 fs_mkdir(u8 *filename) {
     u32 i;
     FILE mk_dir;
     FILE file_creat;
-
+    kernel_printf("mkdir debug 1\n");
     if (fs_create_with_attr(filename, 0x30) == 1)
         goto fs_mkdir_err;
+    kernel_printf("mkdir debug 2\n");
 
     if (fs_open(&mk_dir, filename) == 1)
         goto fs_mkdir_err;
+    kernel_printf("mkdir debug 3\n");
 
     mk_dir_buf[0] = '.';
     for (i = 1; i < 11; i++)
@@ -105,8 +107,10 @@ u32 fs_mkdir(u8 *filename) {
 
     if (fs_write(&mk_dir, mk_dir_buf, 32) == 1)
         goto fs_mkdir_err;
+    kernel_printf("mkdir debug 4\n");
 
     fs_lseek(&mk_dir, 0);
+    kernel_printf("mkdir debug 5\n");
 
     mk_dir_buf[20] = mk_dir.entry.data[20];
     mk_dir_buf[21] = mk_dir.entry.data[21];
@@ -115,6 +119,7 @@ u32 fs_mkdir(u8 *filename) {
 
     if (fs_write(&mk_dir, mk_dir_buf, 32) == 1)
         goto fs_mkdir_err;
+    kernel_printf("mkdir debug 6\n");
 
     mk_dir_buf[0] = '.';
     mk_dir_buf[1] = '.';
@@ -131,12 +136,14 @@ u32 fs_mkdir(u8 *filename) {
 
     if (fs_write(&mk_dir, mk_dir_buf, 32) == 1)
         goto fs_mkdir_err;
+    kernel_printf("mkdir debug 7\n");
 
     for (i = 28; i < 32; i++)
         mk_dir.entry.data[i] = 0;
 
     if (fs_close(&mk_dir) == 1)
         goto fs_mkdir_err;
+    kernel_printf("mkdir debug 8\n");
 
     return 0;
 fs_mkdir_err:
