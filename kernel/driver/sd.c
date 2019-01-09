@@ -122,6 +122,7 @@ u32 sd_write_block(unsigned char* buf, unsigned long addr, unsigned long count) 
     } else {
         // write multiple block
         for (i = 0; i < count; ++i) {
+            kernel_printf("i = %d\n",i);
             result = sd_write_sector_blocking(addr + i, buf + i * SECSIZE);
             if (0 != result) {
                 kernel_printf("Error: sd_write_sector_blocking failed:%x\n", result);
