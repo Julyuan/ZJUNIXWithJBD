@@ -80,7 +80,7 @@ u32 init_fat_info() {
     /* Keep FSInfo in buf */
     read_block(fat_info.fat_fs_info, 1 + fat_info.base_addr, 1);
     log(LOG_OK, "Get FSInfo sector");
-   // init_journal_info();
+    init_journal_info();
 #ifdef FS_DEBUG
     dump_fat_info(&(fat_info));
 #endif
@@ -692,12 +692,14 @@ fs_alloc_err:
 /* Write to file */
 // 这个是文件系统写操作的函数，我们的日志系统对于每一个写操作，都用一个transaction来表示
 u32 fs_write(FILE *file, const u8 *buf, u32 count) {
+    printk("fs_write is called\n");
+    printk("journal magic number: %d\n",journal->j_superblock->s_header.h_magic);
     /* If write 0 bytes */
     if (count == 0) {
         return 0;
     }
 
-    
+    printk("begin calculate\n");
     u32 start_clus = file->loc >> fs_wa(fat_info.BPB.attr.sectors_per_cluster << 9);
     u32 start_byte = file->loc & ((fat_info.BPB.attr.sectors_per_cluster << 9) - 1);
     u32 end_clus = (file->loc + count - 1) >> fs_wa(fat_info.BPB.attr.sectors_per_cluster << 9);
@@ -706,6 +708,7 @@ u32 fs_write(FILE *file, const u8 *buf, u32 count) {
     /* If file is empty, alloc a new data cluster */
     u32 curr_cluster = get_start_cluster(file);
     if (curr_cluster == 0) {
+        printk("go into file empty case\n");
         // 新建一个transaction并分配空间
         transaction_t* transaction = (transaction_t*)kmalloc(sizeof(transaction_t));
         // 创建两个handle并分配空间

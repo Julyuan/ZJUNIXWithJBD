@@ -20,6 +20,9 @@ u32 init_journal_info(){
 	printk("JOURNAL INIT s_maxlen:	%d\n",journal->j_superblock->s_maxlen);
 	printk("JOURNAL INIT s_first:	%d\n",journal->j_superblock->s_first);
 	printk("err value: %d\n",err);
+	journal->j_checkpoint_transaction = NULL;
+	journal->j_committing_transaction = NULL;
+	journal->j_running_transaction = NULL;
 	if(err==0){
 		// 启动日志的恢复程序
 		journal_recover(journal);
