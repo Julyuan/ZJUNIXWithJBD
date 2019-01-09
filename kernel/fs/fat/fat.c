@@ -80,7 +80,7 @@ u32 init_fat_info() {
     /* Keep FSInfo in buf */
     read_block(fat_info.fat_fs_info, 1 + fat_info.base_addr, 1);
     log(LOG_OK, "Get FSInfo sector");
-    init_journal_info();
+   // init_journal_info();
 #ifdef FS_DEBUG
     dump_fat_info(&(fat_info));
 #endif

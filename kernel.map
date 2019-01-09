@@ -396,26 +396,26 @@ Linker script and memory map
                 0x00000000800090b4                write_one_revoke_record
  .text          0x0000000080009110     0x46a0 kernel/fs/fat/fat.o
                 0x0000000080009110                init_fat_info
-                0x0000000080009450                init_fat_buf
-                0x0000000080009534                init_dir_buf
-                0x00000000800095d0                init_fs
-                0x0000000080009648                write_fat_sector
-                0x0000000080009820                read_fat_sector
-                0x000000008000a5fc                fs_next_slash
-                0x000000008000a894                fs_cmp_filename
-                0x000000008000a91c                fs_find
-                0x000000008000ae3c                fs_open
-                0x000000008000b010                fs_fflush
-                0x000000008000b184                fs_close
-                0x000000008000b32c                fs_read
-                0x000000008000b6ec                fs_next_free
-                0x000000008000b7bc                fs_alloc
-                0x000000008000b9b0                fs_write
-                0x000000008000cc70                fs_lseek
-                0x000000008000ccdc                fs_find_empty_entry
-                0x000000008000d060                fs_create_with_attr
-                0x000000008000d4cc                fs_create
-                0x000000008000d508                get_filename
+                0x0000000080009448                init_fat_buf
+                0x000000008000952c                init_dir_buf
+                0x00000000800095c8                init_fs
+                0x0000000080009640                write_fat_sector
+                0x0000000080009818                read_fat_sector
+                0x000000008000a5f4                fs_next_slash
+                0x000000008000a88c                fs_cmp_filename
+                0x000000008000a914                fs_find
+                0x000000008000ae34                fs_open
+                0x000000008000b008                fs_fflush
+                0x000000008000b17c                fs_close
+                0x000000008000b324                fs_read
+                0x000000008000b6e4                fs_next_free
+                0x000000008000b7b4                fs_alloc
+                0x000000008000b9a8                fs_write
+                0x000000008000cc68                fs_lseek
+                0x000000008000ccd4                fs_find_empty_entry
+                0x000000008000d058                fs_create_with_attr
+                0x000000008000d4c4                fs_create
+                0x000000008000d500                get_filename
  .text          0x000000008000d7b0      0x940 kernel/fs/fat/usr.o
                 0x000000008000d7b0                fs_rm
                 0x000000008000d8f8                fs_mv
