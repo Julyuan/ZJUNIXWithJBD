@@ -163,6 +163,7 @@ void parse_cmd() {
         kernel_printf("touch return with %d\n", result);
 
     }else if(kernel_strcmp(ps_buffer,"mkdir")==0){
+        kernel_printf("call mkdir\n");
         result = fs_mkdir(param);
         kernel_printf("mkdir return with %d\n", result);
     } 
