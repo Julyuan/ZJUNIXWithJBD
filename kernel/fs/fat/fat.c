@@ -648,27 +648,36 @@ fs_next_free_err:
 
 /* Alloc a new free data cluster */
 u32 fs_alloc(u32 *new_alloc, handle_t* handle) {
+    printk("fs_alloc 1\n");
     u32 clus;
     u32 next_free;
 
     clus = get_u32(fat_info.fat_fs_info + 492) + 1;
+    printk("fs_alloc 2\n");
 
     /* If FSI_Nxt_Free is illegal (> FSI_Free_Count), find a free data cluster
      * from beginning */
     if (clus > get_u32(fat_info.fat_fs_info + 488) + 1) {
         if (fs_next_free(2, &clus) == 1)
             goto fs_alloc_err;
+        printk("fs_alloc 3\n");
 
         if (fs_modify_fat(clus, 0xFFFFFFFF, handle) == 1)
             goto fs_alloc_err;
+        printk("fs_alloc 4\n");
+
     }
 
     /* FAT allocated and update FSI_Nxt_Free */
     if (fs_modify_fat(clus, 0xFFFFFFFF, handle) == 1)
         goto fs_alloc_err;
 
+    printk("fs_alloc 5\n");
+
     if (fs_next_free(clus, &next_free) == 1)
         goto fs_alloc_err;
+
+    printk("fs_alloc 6\n");
 
     /* no available free cluster */
     if (next_free > fat_info.total_data_clusters + 1)
@@ -683,6 +692,7 @@ u32 fs_alloc(u32 *new_alloc, handle_t* handle) {
     /* Erase new allocated cluster */
     if (write_block(new_alloc_empty, fs_dataclus2sec(clus), fat_info.BPB.attr.sectors_per_cluster) == 1)
         goto fs_alloc_err;
+    printk("fs_alloc 7\n");
 
     return 0;
 fs_alloc_err:
